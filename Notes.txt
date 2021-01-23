@@ -1,0 +1,2 @@
+* Change reg atk and def to phyAtk and phyDef
+* A target should be a spot on the board even if it's selecting a sprite
