@@ -1,17 +1,26 @@
-module SpriteCore where
+module Core where
 
 import Data.Maybe
 
-data Sprite = Sprite { sprName     :: Name
-                     , sprId       :: Id
-                     , currentHp   :: Hp
-                     , stats       :: Stats
-                     , sprEffects  :: [Effect]
-                     , sprActions  :: [Action]
-                     , sprElement  :: Element
-                     , sprBase     :: SpriteBase
-                     , sprPrefixes :: Prefix
+data Sprite = Sprite { sprName    :: Name
+                     , sprId      :: Id
+                     , currentHp  :: Hp
+                     , stats      :: Stats
+                     , sprEffects :: [Effect]
+                     , sprActions :: SpriteActions
+                     , sprElement :: Element
+                     , sprBase    :: SpriteBase
+                     , sprPrefix  :: Prefix
                      }
+
+instance Show Sprite where
+    show spr = sprName spr
+
+data SpriteActions = SpriteActions { fstAct :: Maybe Action
+                                   , sndAct :: Maybe Action
+                                   , thdAct :: Maybe Action
+                                   , fthAct :: Maybe Action
+                                   }
 
 data Stats = Stats { baseHp :: Hp
                    , phyAtk :: PhyAtk
@@ -21,11 +30,6 @@ data Stats = Stats { baseHp :: Hp
                    , spd    :: Speed
                    , stm    :: Stamina
                    }
-
-data Effect = Effect { fxTargets  :: [Target]
-                     , fxFunction :: EffectFunction
-                     , fxSprite   :: Maybe BattleSprite
-                     }
 
 data Action = Action { actName    :: Name
                      , actTarget  :: TargetType  
@@ -40,24 +44,32 @@ data BattleSprite = BattleSprite { battleSprite   :: Sprite
                                  , battleEffects  :: [Effect]
                                  , modifiers      :: [Modifier] 
                                  , battleElement  :: Element
-                                 , battleActions  :: [Action]
+                                 , battleActions  :: SpriteActions
                                  , battlePosition :: Position
                                  , battleTeam     :: Team
                                  }
 
+instance Show BattleSprite where
+    show bSprite = show . battleSprite $ bSprite
+
 data Square = Square { sqrPosition :: Position
                      , occupant    :: Occupant
                      , sqrEffects  :: [Effect]
+                     , marked      :: Bool
                      }
 
 instance Show Square where
     show square =
         case occupant square of
-          Vacant          -> if length (sqrEffects square) == 0 then "[ ]" else "[@]"
-          ContainSprite _ -> "[S]"
-          ContainObject   -> "[#]"
+          Vacant          | marked square                  -> "[+]"
+                          | length (sqrEffects square) > 0 -> "[@]"
+                          | otherwise                      -> "[ ]"
+          ContainSprite _ | marked square                  -> "[x]"
+                          | otherwise                      -> "[S]"
+          ContainObject                                    -> "[#]"
 
 data Occupant = Vacant | ContainSprite BattleSprite | ContainObject
+                deriving (Show)
 
 instance Eq Occupant where
     Vacant          == Vacant          = True
@@ -66,24 +78,22 @@ instance Eq Occupant where
     _               == _               = False
 
 data Board = Board { bWidth  :: Width
-                   , bLength :: Length
-                   , rows    :: Rows
+                   , bLength :: Length , rows    :: Rows
                    }
 
 instance Show Board where
     show board = makeColumnHeader (bWidth board) ++ scanRows 1 (rows board)
         where scanRows l []     = []
               scanRows l (r:rs) = '\n':showRow l r ++ scanRows (l+1) rs
-
 data Element = Fire | Ice | Lightning | Psychic | Normal
                 deriving (Eq, Show)
 data Damage     = NoDmg | Dmg Int
 data DamageType = NoType | Physical | Magical
                     deriving (Eq, Show)
-data TargetType = Self | Selection Int Radius | Emit Ray | Area Shape Origin
+data TargetType = Self | Selection Vacancy Int Radius | Emit Ray | Area Shape Origin
+data Vacancy    = Occupied | Unoccupied | Indifferent
 data Shape      = Sphere Int | Cube Int
-data Ray        = Ray Direction RayType 
-data RayType    = Line Int | Cone Int
+data Ray        = Line Int | Cone Int
                     deriving (Eq, Show)
 data Direction  = North | East | South | West
                     deriving (Eq, Show)
@@ -94,7 +104,7 @@ data Attr       = PhyAtkAttr | MagAtkAttr | PhyDefAttr | MagDefAttr | SpdAttr | 
                     deriving (Eq, Show)
 data Team       = Team Int
                     deriving (Eq, Show)
-data Prefix     = Hearty | Strong | Intelligent | Sturdy | Wise | Quick | Resilient
+data Prefix     = Nuetral | Hearty | Strong | Intelligent | Sturdy | Wise | Quick | Resilient
 
 newtype Hp           = Hp Int
 newtype PhyAtk       = PhyAtk Int
@@ -104,7 +114,6 @@ newtype MagDef       = MagDef Int
 newtype Speed        = Speed Int
 newtype Stamina      = Stamina Int
 newtype Energy       = Energy Int
-newtype LatentEffect = LatentEffect ([Target] -> Effect)
 
 type Name           = String
 type Id             = String
@@ -118,7 +127,19 @@ type Position       = (Int, Int)
 type Width          = Int
 type Length         = Int
 type Rows           = [[Square]]
+type LatentEffect   = [Target] -> BattleSprite -> Board -> Board
+type Effect         = BattleSprite -> Board -> Board
 
+toBattle :: Team -> Position -> Sprite -> BattleSprite
+toBattle team position spr = BattleSprite { battleSprite   = spr
+                                          , battleHp       = currentHp spr
+                                          , battleEffects  = []
+                                          , modifiers      = []
+                                          , battleElement  = sprElement spr
+                                          , battleActions  = sprActions spr
+                                          , battlePosition = position
+                                          , battleTeam     = team
+                                          }
 
 makeColumnHeader :: Width -> [Char]
 makeColumnHeader w = leftBuffer ++ makeColumns [1..w]
@@ -143,6 +164,7 @@ newSquare :: Position -> Square
 newSquare p = Square { sqrPosition = p
                      , occupant    = Vacant
                      , sqrEffects  = []
+                     , marked      = False
                      }
 
 placeObj :: Square -> Square
@@ -168,6 +190,9 @@ createBoardRows w l = map createRow rowDimensions
 newBoard :: Width -> Length -> Board
 newBoard w l = Board w l $ createBoardRows w l
 
+markSquare :: Square -> Square
+markSquare sqr = sqr { marked = True }
+
 getSquare :: Position -> Board -> Square
 getSquare (x, y) board = r !! (x-1)
     where rs = rows board
@@ -181,8 +206,9 @@ modifySquare f (x, y) board = board { rows = rs' }
           c' = f c
           r' = bCols ++ c':aCols
 
-placeBSpriteOnBoard :: BattleSprite -> Position -> Board -> Board
-placeBSpriteOnBoard bSprite = modifySquare (placeBSprite bSprite) 
+placeSpriteOnBoard :: Team -> Position -> Sprite -> Board -> Board
+placeSpriteOnBoard team position spr = modifySquare (placeBSprite bSprite) position
+    where bSprite = toBattle team position spr
 
 placeObjOnBoard :: Position -> Board -> Board
 placeObjOnBoard = modifySquare placeObj
@@ -210,3 +236,24 @@ moveLeft p@(x, y) = move p (x-1, y)
 
 moveRight :: Position -> Board -> Board
 moveRight p@(x, y) = move p (x+1, y) 
+
+moveBSpriteUp :: (BattleSprite, Board) -> (BattleSprite, Board)
+moveBSpriteUp (bSprite, board) = (bSprite { battlePosition = p2}, move p1 p2 board)
+    where p1@(x, y) = battlePosition bSprite
+          p2        = (x, y-1)
+
+moveBSpriteDown :: (BattleSprite, Board) -> (BattleSprite, Board)
+moveBSpriteDown (bSprite, board) = (bSprite { battlePosition = p2}, move p1 p2 board)
+    where p1@(x, y) = battlePosition bSprite
+          p2        = (x, y+1)
+
+moveBSpriteLeft :: (BattleSprite, Board) -> (BattleSprite, Board)
+moveBSpriteLeft (bSprite, board) = (bSprite { battlePosition = p2}, move p1 p2 board)
+    where p1@(x, y) = battlePosition bSprite
+          p2        = (x-1, y)
+
+moveBSpriteRight :: (BattleSprite, Board) -> (BattleSprite, Board)
+moveBSpriteRight (bSprite, board) = (bSprite { battlePosition = p2}, move p1 p2 board)
+    where p1@(x, y) = battlePosition bSprite
+          p2        = (x+1, y)
+
