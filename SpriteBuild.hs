@@ -1,40 +1,50 @@
 module SpriteBuild where
 
-import SpriteData
+import Core
 import Actions
 
-data SpriteBase = SpriteBase { baseType        :: SpriteType
-                             , baseStats       :: Stats 
-                             , moveBase        :: [Action]  
-                             , possibleEffects :: [Effect]
+data SpriteType = Wyvern
+                    deriving (Show, Eq)
+data SprBase = SprBase { baseType        :: SpriteType
+                       , baseStats       :: Stats 
+                       , moveBase        :: [Action]  
+                       , possibleEffects :: [Effect]
+                       }
+
+convertActions :: [Action] -> SpriteActions
+convertActions as = fillSprActions as' 
+    where as' = (map Just as) ++ replicate (4 - length as) Nothing
+          fillSprActions (a:b:c:d:as) = SpriteActions { fstAct = a
+                                                      , sndAct = b
+                                                      , thdAct = c
+                                                      , fthAct = d
+                                                      }
+
+defaultSprite :: String -> SprBase -> Sprite
+defaultSprite id sb = Sprite { sprName    = show $ baseType sb 
+                             , sprId      = id
+                             , currentHp  = baseHp . baseStats $ sb 
+                             , stats      = baseStats sb
+                             , sprActions = convertActions $ moveBase sb
+                             , sprEffects = possibleEffects sb
+                             , sprElement = Normal
+                             , sprBase    = show $ baseType sb
+                             , sprPrefix  = Nuetral
                              }
 
-defaultSprite :: String -> SpriteBase -> Sprite
-defaultSprite id sb = Sprite { name           = show $ baseType sb 
-                             , spriteId       = id
-                             , currentHp      = baseHp . baseStats $ sb 
-                             , stats          = baseStats sb
-                             , currentActions = moveBase sb
-                             , innateEffects  = possibleEffects sb
-                             , elementType    = Normal
-                             , spriteType     = baseType sb
-                             , prefixes       = []
-                             }
-
-wyvern :: SpriteBase
-wyvern = SpriteBase { baseType        = Wyvern
-                    , baseStats       = wyvernStats
-                    , moveBase        = wyvernMoves
-                    , possibleEffects = wyvernEffects
-                    }
-    where wyvernStats = Stats { baseHp = 10
-                              , atk    = 10
-                              , magAtk = 10
-                              , def    = 10
-                              , magDef = 10
-                              , spd    = 10
-                              , agl    = 10
-                              , stm    = 10
+wyvern :: SprBase
+wyvern = SprBase { baseType        = Wyvern
+                 , baseStats       = wyvernStats
+                 , moveBase        = wyvernMoves
+                 , possibleEffects = wyvernEffects
+                 }
+    where wyvernStats = Stats { baseHp = Hp 10
+                              , phyAtk = PhyAtk 10
+                              , magAtk = MagAtk 10
+                              , phyDef = PhyDef 10
+                              , magDef = MagDef 10
+                              , spd    = Speed 10
+                              , stm    = Stamina 10
                               }
-          wyvernMoves   = [bite, fly]
+          wyvernMoves   = [fly]
           wyvernEffects = []
