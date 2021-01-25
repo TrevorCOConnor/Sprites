@@ -29,8 +29,8 @@ validTarget origin (Selection v n r) sqr = withinRange && rightVacancy
           withinRange  = dist origin p2 < r
           rightVacancy = correctVacancy v sqr
 
-showValidTargets :: BattleSprite -> Action -> Board -> Board
-showValidTargets bSprite action board = board { rows = rs'}
+paintValidTargets :: BattleSprite -> Action -> Board -> Board
+paintValidTargets bSprite action board = board { rows = rs'}
     where tType = actTarget action 
           rs  = rows board 
           rs' = map (map f) rs
@@ -52,6 +52,17 @@ selectAndValidateTarget bSprite tType board = do
     if validTarget origin tType sqr
        then return t
        else selectAndValidateTarget bSprite tType board
+
+chooseTargets2 :: BattleSprite -> TargetType -> Board -> IO [Target]
+chooseTargets2 bSprite Self         board = return []
+chooseTargets2 bSprite t@(Emit _)   board = fmap (:[]) (selectAndValidateTarget bSprite t board)
+chooseTargets2 bSprite (Area _ 0)   board = return []
+chooseTargets2 bSprite t@(Area _ n) board = fmap (:[]) (selectAndValidateTarget bSprite t board)
+chooseTargets2 bSprite t@(Selection v 0 r) board = return []
+chooseTargets2 bSprite t@(Selection v n r) board = do
+    t  <- selectAndValidateTarget bSprite t board
+    ts <- chooseTargets2 bSprite (Selection v (n-1) r) board
+    return (t:ts)
     
 chooseTargets :: TargetType -> IO [Target]
 chooseTargets Self = return []
@@ -68,6 +79,16 @@ getAndDisplayTargets :: TargetType -> IO ()
 getAndDisplayTargets tType = do
     targets <- chooseTargets tType
     foldr (\x y -> do (putStrLn . show) x; y) (putStr "") targets
+
+useAction :: (SpriteActions -> Maybe Action) -> BattleSprite -> Board -> IO Board
+useAction f bSprite board = do
+    let Just action  = f $ battleActions bSprite
+    let tType   = actTarget action
+    let effects = actEffects action
+    putStr . show $ paintValidTargets bSprite action board
+    targets <- chooseTargets tType
+    let f eff = eff targets bSprite
+    return $ foldr f board effects  
 
 fly :: Action
 fly = Action { actName    = "Fly"
