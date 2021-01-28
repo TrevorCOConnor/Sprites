@@ -85,12 +85,12 @@ instance Show Board where
     show board = makeColumnHeader (bWidth board) ++ scanRows 1 (rows board)
         where scanRows l []     = []
               scanRows l (r:rs) = '\n':showRow l r ++ scanRows (l+1) rs
-data Element = Fire | Ice | Lightning | Psychic | Normal
+data Element = Fire | Ice | Lightning | Psychic | Poison | Normal
                 deriving (Eq, Show)
 data Damage     = NoDmg | Dmg Int
 data DamageType = NoType | Physical | Magical
                     deriving (Eq, Show)
-data TargetType = Self | Selection Vacancy Int Radius | Emit Ray | Area Shape Origin
+data TargetType = Self | Selection Vacancy Choices Radius | Emit Ray | Area Shape Origin
 data Vacancy    = Occupied | Unoccupied | Indifferent
 data Shape      = Sphere Int | Cube Int
 data Ray        = Line Int | Cone Int
@@ -129,6 +129,7 @@ type Length         = Int
 type Rows           = [[Square]]
 type LatentEffect   = [Target] -> BattleSprite -> Board -> Board
 type Effect         = BattleSprite -> Board -> Board
+type Choices        = Int
 
 toBattle :: Team -> Position -> Sprite -> BattleSprite
 toBattle team position spr = BattleSprite { battleSprite   = spr
