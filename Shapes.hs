@@ -28,6 +28,9 @@ directionToAngles East  = (-pi/4,     pi/4)
 directionToAngles North = (-(3*pi)/4, -pi/4)
 directionToAngles West  = ((3*pi)/4,  (5*pi)/4)
 
+positionsEqual :: Position -> Position -> Bool
+positionsEqual (a, b) (x, y) = a == x && b == y
+
 subtractPoints :: Point -> Point -> Point
 subtractPoints p1 p2 = addPoints p1 $ scalePoint (-1.0) p2
 
@@ -66,14 +69,16 @@ polarPoint start r angle = roundPoint $ (x, y)
 
 plotLine :: Position -> Board -> Position -> [Position]
 plotLine p1 board p2 = plotPoints ls board
-    where (l:ls) = line p1 p2
-          plotPoints []     b = []
-          plotPoints (l:ls) b = 
-              case o of
-                Vacant          -> l:plotPoints ls b
-                ContainObject   -> []
-                ContainSprite _ -> [l]
-              where o = occupant $ getSquare l b
+    where ls = filter (not . positionsEqual p1) $ line p1 p2
+
+plotPoints :: [Position] -> Board -> [Position]
+plotPoints []     _     = []
+plotPoints (p:ps) board = 
+    case o of
+      Vacant          -> p: plotPoints ps board
+      ContainObject   -> []
+      ContainSprite _ -> [p]
+    where o = occupant $ getSquare p board
 
 createCone :: Start -> Direction -> Radius -> Board -> [Position]
 createCone start dir r board = 

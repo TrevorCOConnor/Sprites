@@ -194,6 +194,10 @@ newBoard w l = Board w l $ createBoardRows w l
 markSquare :: Square -> Square
 markSquare sqr = sqr { marked = True }
 
+markSquaresOnBoard :: [Position] -> Board -> Board
+markSquaresOnBoard (p:ps) board = modifySquare markSquare p $ markSquaresOnBoard ps board
+markSquaresOnBoard []     board = board
+
 getSquare :: Position -> Board -> Square
 getSquare (x, y) board = r !! (x-1)
     where rs = rows board
