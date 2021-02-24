@@ -41,6 +41,7 @@ data Action = Action { actName    :: Name
 
 data BattleSprite = BattleSprite { battleSprite   :: Sprite
                                  , battleHp       :: Hp
+                                 , battleStats    :: Stats
                                  , battleEffects  :: [Effect]
                                  , modifiers      :: [Modifier] 
                                  , battleElement  :: Element
@@ -78,22 +79,24 @@ instance Eq Occupant where
     _               == _               = False
 
 data Board = Board { bWidth  :: Width
-                   , bLength :: Length , rows    :: Rows
+                   , bLength :: Length 
+                   , rows    :: Rows
                    }
 
 instance Show Board where
     show board = makeColumnHeader (bWidth board) ++ scanRows 1 (rows board)
         where scanRows l []     = []
               scanRows l (r:rs) = '\n':showRow l r ++ scanRows (l+1) rs
+
 data Element = Fire | Ice | Lightning | Psychic | Poison | Normal
                 deriving (Eq, Show)
 data Damage     = NoDmg | Dmg Int
 data DamageType = NoType | Physical | Magical
                     deriving (Eq, Show)
-data TargetType = Self | Selection Vacancy Choices Radius | Emit Ray | Area Shape Origin
+data TargetType = Self | Selection Vacancy Choices Radius | Emit Int Ray | Area Shape Origin
 data Vacancy    = Occupied | Unoccupied | Indifferent
 data Shape      = Sphere Int | Cube Int
-data Ray        = Line Int | Cone Int
+data Ray        = Line | Cone
                     deriving (Eq, Show)
 data Direction  = North | East | South | West
                     deriving (Eq, Show)
@@ -106,14 +109,14 @@ data Team       = Team Int
                     deriving (Eq, Show)
 data Prefix     = Nuetral | Hearty | Strong | Intelligent | Sturdy | Wise | Quick | Resilient
 
-newtype Hp           = Hp Int
-newtype PhyAtk       = PhyAtk Int
-newtype MagAtk       = MagAtk Int
-newtype PhyDef       = PhyDef Int
-newtype MagDef       = MagDef Int
-newtype Speed        = Speed Int
-newtype Stamina      = Stamina Int
-newtype Energy       = Energy Int
+type Hp           = Int
+type PhyAtk       = Int
+type MagAtk       = Int
+type PhyDef       = Int
+type MagDef       = Int
+type Speed        = Int
+type Stamina      = Int
+newtype Energy    = Energy Int
 
 type Name           = String
 type Id             = String
@@ -134,6 +137,7 @@ type Choices        = Int
 toBattle :: Team -> Position -> Sprite -> BattleSprite
 toBattle team position spr = BattleSprite { battleSprite   = spr
                                           , battleHp       = currentHp spr
+                                          , battleStats    = stats spr
                                           , battleEffects  = []
                                           , modifiers      = []
                                           , battleElement  = sprElement spr
@@ -210,6 +214,17 @@ modifySquare f (x, y) board = board { rows = rs' }
           (bCols, c:aCols) = splitAt (x-1) r
           c' = f c
           r' = bCols ++ c':aCols
+
+convertSprFuncToSqr :: (BattleSprite -> BattleSprite) -> (Square -> Square)
+convertSprFuncToSqr f = g
+    where g sqr = 
+            case o of
+                (ContainSprite b) -> sqr { occupant = ContainSprite (f b) }
+                _                 -> sqr
+            where o = occupant sqr
+
+modifyOccupant :: (BattleSprite -> BattleSprite) -> Position -> Board -> Board
+modifyOccupant f = modifySquare (convertSprFuncToSqr f)
 
 placeSpriteOnBoard :: Team -> Position -> Sprite -> Board -> Board
 placeSpriteOnBoard team position spr = modifySquare (placeBSprite bSprite) position

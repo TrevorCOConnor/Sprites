@@ -23,8 +23,8 @@ correctVacancy vac sqr = compareVacancy vac (occupant sqr)
           compareVacancy Unoccupied _                 = False
 
 validTarget :: Position -> TargetType -> Square -> Bool
-validTarget (x, y) (Emit _) sqr = x == a || y == b 
-    where (a, b) = sqrPosition sqr
+validTarget origin (Emit r _) sqr = dist origin p2 < r && origin /= p2
+    where p2 = sqrPosition sqr
 validTarget origin (Selection v n r) sqr = withinRange && rightVacancy
     where p2           = sqrPosition sqr
           withinRange  = dist origin p2 < r
@@ -59,7 +59,7 @@ generateTargets bSprite Self _ = [battlePosition bSprite]
 
 chooseTargets :: BattleSprite -> TargetType -> Board -> IO [Target]
 chooseTargets bSprite Self         board = return []
-chooseTargets bSprite t@(Emit _)   board = fmap (:[]) (selectAndValidateTarget bSprite t board)
+chooseTargets bSprite t@(Emit _ _) board = fmap (:[]) (selectAndValidateTarget bSprite t board)
 chooseTargets bSprite (Area _ 0)   board = return []
 chooseTargets bSprite t@(Area _ n) board = fmap (:[]) (selectAndValidateTarget bSprite t board)
 chooseTargets bSprite t@(Selection v 0 r) board = return []
@@ -91,6 +91,33 @@ freeMove :: [Target] -> BattleSprite -> Board -> Board
 freeMove (t:[]) bSprite board = move origin t board
     where origin = battlePosition bSprite
 
+getAtkStat :: DamageType -> BattleSprite -> Int 
+getAtkStat Magical  = magAtk . battleStats
+getAtkStat Physical = phyAtk . battleStats
+getAtkStat _        = const 0
+
+getDefStat :: DamageType -> BattleSprite -> Int 
+getDefStat Magical  = magDef . battleStats
+getDefStat Physical = phyDef . battleStats
+getDefStat _        = const 0
+
+reduceHp :: Int -> BattleSprite -> BattleSprite 
+reduceHp dmg bSpr = bSpr { battleHp = reduce (battleHp bSpr) dmg } 
+    where reduce a b = max (a-b) 0
+
+actPower :: Action -> BattleSprite -> Int
+actPower act bSpr = round $ atk * (dmg/100) 
+    where dmg =
+            case actDmg act of
+            Dmg x ->  fromIntegral x :: Float
+            NoDmg ->  0.0
+          atk = fromIntegral $ getAtkStat (actDmgType act) bSpr :: Float
+
+applyDmg :: Action -> BattleSprite -> BattleSprite -> BattleSprite
+applyDmg attack attacker defender = reduceHp dmg defender
+    where power   = actPower attack attacker
+          defense = getDefStat (actDmgType attack) defender
+          dmg     = power - defense
 
 -- bite :: Action 
 -- bite = Action { actName    = "Bite"
@@ -101,11 +128,11 @@ freeMove (t:[]) bSprite board = move origin t board
 --               , actCost    = 3
 --               }
 -- 
--- spray :: Action
--- spray = Action { actName    = "Spray"
---                , actTarget  = Area (Cone 4) 0
---                , actDamage  = Damage 4 
---                , actDmgType = Magical
---                , actEffects = []
---                , actCost    = 10
---                }
+spray :: Action
+spray = Action { actName    = "Spray"
+               , actTarget  = Emit 4 Cone
+               , actDmg     = Dmg 4 
+               , actDmgType = Magical
+               , actEffects = []
+               , actCost    = Energy 10
+               }
