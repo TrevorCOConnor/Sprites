@@ -38,13 +38,14 @@ wyvern = SprBase { baseType        = Wyvern
                  , moveBase        = wyvernMoves
                  , possibleEffects = wyvernEffects
                  }
-    where wyvernStats = Stats { baseHp = Hp 10
-                              , phyAtk = PhyAtk 10
-                              , magAtk = MagAtk 10
-                              , phyDef = PhyDef 10
-                              , magDef = MagDef 10
-                              , spd    = Speed 10
-                              , stm    = Stamina 10
+    where wyvernStats = Stats { baseHp = 10
+                              , phyAtk = 10
+                              , magAtk = 10
+                              , phyDef = 10
+                              , magDef = 10
+                              , spd    = 10
+                              , stm    = 10
                               }
-          wyvernMoves   = [fly]
+          wyvernMoves   = [ fly
+                          , spray]
           wyvernEffects = []

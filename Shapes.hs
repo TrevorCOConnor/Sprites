@@ -22,6 +22,10 @@ pointToDirection (a, b) (x, y) | (x - a) > 0 = East
                                | (x - a) < 0 = West
                                | (y - b) > 0 = North
                                | (y - b) < 0 = South
+
+angleToRange :: Angle -> (Angle, Angle)
+angleToRange a = (a - (pi/4), a + (pi/4))
+
 directionToAngles :: Direction -> Point
 directionToAngles South = (pi/4,      (3*pi)/4)
 directionToAngles East  = (-pi/4,     pi/4)
@@ -56,9 +60,14 @@ line p1 p2 = map (roundPoint . lineEq) ts
           p2' = floatPosition p2
 
 angle :: Position -> Position -> Float
-angle p1@(a, b) p2@(x, y) = acos $ x' / radius
+angle p1@(a, b) p2@(x, y) = if (abs xangle) > (abs yangle)
+                                then xangle
+                                else yangle
     where radius = d2 p1 p2
           x' = fromIntegral (x-a) :: Float
+          y' = fromIntegral (y-b) :: Float
+          xangle = acos $ x' / radius
+          yangle = asin $ y' / radius
 
 polarPoint :: Start -> Radius -> Angle -> Position
 polarPoint start r angle = roundPoint $ (x, y)
@@ -80,9 +89,8 @@ plotPoints (p:ps) board =
       ContainSprite _ -> [p]
     where o = occupant $ getSquare p board
 
-createCone :: Start -> Direction -> Radius -> Board -> [Position]
-createCone start dir r board = 
+createCone :: Start -> Position -> Radius -> Board -> [Position]
+createCone start p r board =
     concat $ map (plotLine start board) $ map (polarPoint start r) angles
-    where (startAngle, endAngle) = directionToAngles dir
-          angles = [startAngle, startAngle + (1/50) .. endAngle]
-
+        where (startAngle, endAngle) = angleToRange $ angle start p
+              angles = [startAngle, startAngle + (1/50) .. endAngle]
