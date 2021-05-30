@@ -176,17 +176,23 @@ createEnding w h path = if x <= y
 
 
 cleansePath :: [Position] -> [Position] 
-cleansePath = reverse . (cleansePath' [])
+cleansePath ps = reverse $ (last ps) : (cleansePath' [] (zip ps (tail ps)))
 
 
-cleansePath' :: [Position] -> [Position] -> [Position]
+-- cleansePath' :: [Position] -> [Position] -> [Position]
+-- cleansePath' checked [] = checked
+-- cleansePath' checked (p1:[]) = p1:checked
+-- cleansePath' checked (p1:p2:ps) = if p2 `elem` checked
+--                                      then if oddPos p1
+--                                              then cleansePath' checked ps
+--                                              else cleansePath' (p1:checked) ps
+--                                      else cleansePath' (p2:p1:checked) ps
+
+cleansePath' :: [Position] -> [(Position, Position)] -> [Position]
 cleansePath' checked [] = checked
-cleansePath' checked (p1:[]) = p1:checked
-cleansePath' checked (p1:p2:ps) = if p2 `elem` checked
-                                     then if oddPos p1
-                                             then cleansePath' checked ps
-                                             else cleansePath' (p1:checked) ps
-                                     else cleansePath' (p2:p1:checked) ps
+cleansePath' checked ((p1, p2):ps) = if p2 `elem` checked
+                                        then cleansePath' checked ps
+                                        else cleansePath' (p1:checked) ps
 
 oddPos :: Position -> Bool
 oddPos (x, y) = (x `mod` 2) == 1 || (y `mod` 2 == 1)

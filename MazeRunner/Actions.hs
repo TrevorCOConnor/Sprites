@@ -8,4 +8,5 @@ data ActionMap = ActionMap { key :: Char
 
 data Action = Movement (Position -> Field -> (Position, Field)) 
                 | ModifyField (Position -> Field -> Field)
+                | ModifyView (Field -> Field)
                 | Escape
