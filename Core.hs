@@ -107,7 +107,7 @@ data Attr       = PhyAtkAttr | MagAtkAttr | PhyDefAttr | MagDefAttr | SpdAttr | 
                     deriving (Eq, Show)
 data Team       = Team Int
                     deriving (Eq, Show)
-data Prefix     = Nuetral | Hearty | Strong | Intelligent | Sturdy | Wise | Quick | Resilient
+data Prefix     = Neutral | Hearty | Strong | Intelligent | Sturdy | Wise | Quick | Resilient
 
 type Hp           = Int
 type PhyAtk       = Int
