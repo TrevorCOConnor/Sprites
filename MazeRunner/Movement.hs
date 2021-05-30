@@ -28,6 +28,11 @@ getSquare (x, y) field = r !! (x)
     where rs = fieldRows field
           r  = rs !! (y)
 
+safeGetSquare :: Position -> Field -> Maybe Square
+safeGetSquare p field = if inField p field
+                         then Just $ getSquare p field
+                         else Nothing
+
 modifySquare :: (Square -> Square) -> Position -> Field -> Field
 modifySquare f (x, y) field = field { fieldRows = rs' }
     where rs' = bRows ++ r':aRows
@@ -69,11 +74,18 @@ makePositionVacant = modifySquare makeVacant
 isVacant :: Square -> Bool
 isVacant = (Vacant ==) . sqrOccupant
 
+containsObject :: Square -> Bool
+containsObject = (ContainsObject ==) . sqrOccupant
+
 placeOccupant :: Occupant -> Square -> Square
 placeOccupant o sqr = sqr { sqrOccupant = o }
 
 validPos :: Position -> Field -> Bool
-validPos (x, y) field = xvalid && yvalid && isVacant sqr
+validPos (x, y) field = (inField (x, y) field) && isVacant sqr
+    where sqr = getSquare (x,y) field
+
+inField :: Position -> Field -> Bool
+inField (x, y) field = xvalid && yvalid 
     where xvalid = 0 <= x && x < fieldWidth field
           yvalid = 0 <= y && y < fieldLength field
           sqr = getSquare (x,y) field

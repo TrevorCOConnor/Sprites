@@ -17,23 +17,11 @@ radialVision radius position = mapField withinRadius
                              then makeVisible sqr 
                              else makeObscure sqr
 
-linearVision :: Int -> Position -> Field -> Field
-linearVision radius pos field = mapField withinLine field
-    where withinLine sqr = if inLineOfSight radius pos (sqrPosition sqr) field
-                              then makeVisible sqr
-                              else makeObscure sqr
-
 linearVision' :: Int -> Position -> Field -> Field
 linearVision' radius pos field = mapField withinLine field
     where withinLine sqr = if inLineOfSight' radius pos (sqrPosition sqr) field
                               then makeVisible sqr
                               else makeObscure sqr
-
-lineOfSight :: Position -> Position -> [Position]
-lineOfSight p1 p2 = if p1 == p2 || nextstep == p2
-                       then []
-                       else nextstep : lineOfSight nextstep p2
-    where nextstep = nextStep p1 p2
 
 lineOfSight' :: Field -> Position -> Position -> [Position]
 lineOfSight' field p1 p2 = if p1 == p2 || nextstep == p2
@@ -72,14 +60,6 @@ xStep :: Position -> Position -> Position
 xStep (a, b) (x, y) = if a < x
                          then (a+1, b)
                          else (a-1, b)
-
-inLineOfSight :: Int -> Position -> Position -> Field -> Bool
-inLineOfSight radius p1 p2 field = if sqrVisibility sqr && distance p1 p2 < radius'
-                                      then all (isVacant . getSqr) $ lineOfSight p1 p2
-                                      else False
-    where sqr = getSquare p2 field 
-          getSqr p = getSquare p field
-          radius' = fromIntegral radius :: Float
 
 inLineOfSight' :: Int -> Position -> Position -> Field -> Bool
 inLineOfSight' radius p1 p2 field = if sqrVisibility sqr && distance p1 p2 < radius'

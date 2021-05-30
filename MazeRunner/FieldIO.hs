@@ -1,5 +1,6 @@
 module FieldIO where
     
+import View
 import MazeGenerator (randomPath)
 import Vision
 import Actions
@@ -43,7 +44,7 @@ play = do
     let field = placePlayerOnField (head randPath) field'
     hClearScreen stdout
     setCursorPosition (fst start) (snd start)
-    printVisualField start field
+    printVisualView start field
     actionLoop start field
     showCursor
     return ()
@@ -57,7 +58,28 @@ printField field = do
 
 printVisualField :: Position -> Field -> IO ()
 printVisualField pos = printField . linearVision' radius pos
--- printVisualField pos = printField 
+
+
+vRadius :: Float
+vRadius = 10
+
+
+printView :: View -> IO ()
+printView view = do
+    setCursorPosition 0 0
+    print (viewFocalPoint view)
+    setCursorPosition 1 0
+    print view
+
+
+printVisualView :: Position -> Field -> IO ()
+printVisualView pos field = printView view
+    where field' = linearVision' radius pos field
+          view = View { viewRadius=vRadius 
+                      , viewField=field'
+                      , viewFocalPoint=pos
+                      }
+                             
 
 
 withEcho :: Bool -> IO a -> IO a
@@ -77,12 +99,16 @@ actionLoop pos field = do
                    hClearScreen stdout
                    putStrLn "You escaped!!!"
             else do
-                printVisualField newPos newField
+                printVisualView newPos newField
                 actionLoop newPos newField
         ModifyField modification -> do
             let newField = modification pos field
-            printVisualField pos newField
+            printVisualView pos newField
             actionLoop pos newField
+        ModifyView view -> do
+            let newField = view field
+            printField newField
+            actionLoop pos field
         Escape -> return()
 
 
@@ -108,6 +134,7 @@ defaultActions = [ ActionMap {key='w', action=return $ Movement moveUp }
                  , ActionMap {key='d', action=return $ Movement moveRight }
                  , ActionMap {key='p', action=readAction placeActions}
                  , ActionMap {key='r', action=readAction removeActions}
+                 , ActionMap {key='v', action=return $ ModifyView (mapField makeVisible)}
                  , ActionMap {key='\ESC', action= return Escape}
                  ]
 
