@@ -19,31 +19,24 @@ radialVision radius position = mapField withinRadius
 
 linearVision' :: Int -> Position -> Field -> Field
 linearVision' radius pos field = mapField withinLine field
-    where withinLine sqr = if inLineOfSight' radius pos (sqrPosition sqr) field
+    where withinLine sqr = if inLineOfSight radius pos (sqrPosition sqr) field
                               then makeVisible sqr
                               else makeObscure sqr
 
-lineOfSight' :: Field -> Position -> Position -> [Position]
-lineOfSight' field p1 p2 = if p1 == p2 || nextstep == p2
+lineOfSight :: Field -> Position -> Position -> [Position]
+lineOfSight field p1 p2 = if p1 == p2 || nextstep == p2
                                then []
-                               else nextstep : lineOfSight' field nextstep p2
-    where nextstep = nextStep' field p1 p2
-
-nextStep :: Position -> Position -> Position
-nextStep p1 p2 = if distance xstep p2 < distance ystep p2
-                    then xstep
-                    else ystep
-    where xstep = xStep p1 p2
-          ystep = yStep p1 p2
+                               else nextstep : lineOfSight field nextstep p2
+    where nextstep = nextStep field p1 p2
 
 losForgiveness :: Float
 losForgiveness = 0.5
 
-nextStep' :: Field -> Position -> Position -> Position
-nextStep' field p1 p2
+nextStep :: Field -> Position -> Position -> Position
+nextStep field p1 p2
     | xdist - ydist > losForgiveness = ystep
     | ydist - xdist > losForgiveness = xstep
-    | otherwise = if isVacant $ getSquare xstep field
+    | otherwise = if (safeSquareCheck isVacant) field xstep 
                      then xstep
                      else ystep
     where xstep = xStep p1 p2
@@ -61,10 +54,16 @@ xStep (a, b) (x, y) = if a < x
                          then (a+1, b)
                          else (a-1, b)
 
-inLineOfSight' :: Int -> Position -> Position -> Field -> Bool
-inLineOfSight' radius p1 p2 field = if sqrVisibility sqr && distance p1 p2 < radius'
-                                      then all (isVacant . getSqr) $ lineOfSight' field p1 p2
+inLineOfSight :: Int -> Position -> Position -> Field -> Bool
+inLineOfSight radius p1 p2 field = if sqrVisibility sqr && distance p1 p2 < radius'
+                                      then all (isVacant . getSqr) $ lineOfSight field p1 p2
                                       else False
     where sqr = getSquare p2 field 
           getSqr p = getSquare p field
           radius' = fromIntegral radius :: Float
+
+
+edgeInLineOfSight :: Int -> Position -> Position -> Field -> Bool
+edgeInLineOfSight radius start end field = all (safeSquareCheck isVacant field) 
+                                                       (lineOfSight field start end) 
+    where radius' = fromIntegral radius :: Float
