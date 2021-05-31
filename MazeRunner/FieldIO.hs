@@ -9,17 +9,19 @@ import Movement
 import System.IO
 import Control.Exception
 import System.Console.ANSI
+import Control.Concurrent
+
 
 radius :: Int
 radius = 10
 
 
 width :: Int
-width = 60
+width = 100
 
 
 height :: Int
-height = 30
+height = 50
 
 
 startingField :: Field
@@ -61,14 +63,12 @@ printVisualField pos = printField . linearVision' radius pos
 
 
 vRadius :: Float
-vRadius = 10
+vRadius = 30
 
 
 printView :: View -> IO ()
 printView view = do
     setCursorPosition 0 0
-    print (viewFocalPoint view)
-    setCursorPosition 1 0
     print view
 
 
@@ -108,6 +108,9 @@ actionLoop pos field = do
         ModifyView view -> do
             let newField = view field
             printField newField
+            threadDelay $ secondsToMilliseconds 3
+            hClearScreen stdout
+            printVisualView pos field
             actionLoop pos field
         Escape -> return()
 
@@ -153,3 +156,8 @@ removeActions = [ ActionMap {key='w', action=return $ ModifyField $ makePosition
                 , ActionMap {key='s', action=return $ ModifyField $ makePositionVacant . down}
                 , ActionMap {key='d', action=return $ ModifyField $ makePositionVacant . right}
                 ]
+
+
+secondsToMilliseconds :: Float -> Int
+secondsToMilliseconds s = round $ s*milli 
+    where milli = 1000000.0

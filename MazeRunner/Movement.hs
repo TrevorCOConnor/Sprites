@@ -1,6 +1,7 @@
 module Movement where
 
 import Field
+import Data.Maybe
 
 type Position = (Int, Int)
 
@@ -112,3 +113,21 @@ mapField :: (Square -> Square) -> Field -> Field
 mapField func field = field { fieldRows = newRows }
     where oldRows = fieldRows field
           newRows = map (map func) oldRows
+
+safeContainsObject :: Field -> Position -> Bool
+safeContainsObject = safeSquareCheck containsObject
+
+
+safeIsObscure :: Field -> Position -> Bool
+safeIsObscure = safeSquareCheck (not . sqrVisibility) 
+
+
+safeIsEnd :: Field -> Position -> Bool
+safeIsEnd = safeSquareCheck sqrEnd
+
+
+safeSquareCheck :: (Square -> Bool) -> (Field -> Position -> Bool)
+safeSquareCheck func = newFunc 
+    where newFunc field p = isJust value && fromJust value
+            where value = safeGetSquare p field >>= (Just . func)
+

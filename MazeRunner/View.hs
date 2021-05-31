@@ -2,7 +2,7 @@ module View where
 
 import Field
 import Movement
-import Vision (distance)
+import Vision (distance, edgeInLineOfSight)
 import Data.Maybe
 
 data View = View { viewRadius :: Float, viewField :: Field,  viewFocalPoint :: Position}
@@ -23,21 +23,6 @@ fieldEdge field p@(x, y)
       | (-1) < x && x < fieldWidth field && y == (-1) = Just '═'
       | otherwise = Nothing
 
-
-safeContainsObject :: Field -> Position -> Bool
-safeContainsObject = safeSquareCheck containsObject
-
-
-safeIsObscure :: Field -> Position -> Bool
-safeIsObscure = safeSquareCheck (not . sqrVisibility) 
-
-
-safeSquareCheck :: (Square -> Bool) -> (Field -> Position -> Bool)
-safeSquareCheck func = newFunc 
-    where newFunc field p = isJust value && fromJust value
-            where value = safeGetSquare p field >>= (Just . func)
-
-
 wallSpot :: Field -> Position -> Maybe Char
 wallSpot field p 
       | not (safeContainsObject field p) = Nothing
@@ -57,28 +42,37 @@ wallSpot field p
       | toLeft = Just '╴'
       | toRight = Just '╶'
       | otherwise = Just '·'
-    where above = safeContainsObject field (up p)
+    where above = safeContainsObject field (up p) 
+                    && (not $ safeIsObscure field (up p))
           below = safeContainsObject field (down p)
+                    && (not $ safeIsObscure field (down p))
           toLeft  = safeContainsObject field (left p)
+                     && (not $ safeIsObscure field (left p))
           toRight = safeContainsObject field (right p)
-
+                     && (not $ safeIsObscure field (right p))
 
 createSpot :: View -> Position -> Char
 createSpot view p 
     | p == (viewFocalPoint view) = 'P'
-    | distance p (viewFocalPoint view) > (viewRadius view) = ' '
-    | isJust fieldedge = fromJust fieldedge
+    | distance p focalPoint > radius = ' '
+    | isJust fieldedge = if edgeInLineOfSight (round radius) focalPoint p field 
+                            then fromJust fieldedge
+                            else '*'
     | safeIsObscure field p = '*'
+    | safeIsEnd field p = 'E'
     | isJust wallspot = fromJust wallspot 
-    | otherwise = ' '
+    | isJust $ safeGetSquare p field = ' '
+    | otherwise = '*'
     where fieldedge = fieldEdge field p
           wallspot = wallSpot field p
           field = viewField view
+          radius = viewRadius view
+          focalPoint = viewFocalPoint view
 
 createViewDisplay :: View -> [String]
 createViewDisplay view = map (map (createSpot view)) centeredRows
     where n = round $ viewRadius view
-          rows = [ [(x,y) | y <- [0..(n-1)] ] | x <- [0..(n-1)]]
+          rows = [ [(x,y) | x <- [0..(n-1)] ] | y <- [0..(n-1)]]
           centeredRows = centerDisplay (viewRadius view) (viewFocalPoint view) rows
 
 centerDisplay :: Float -> Position -> [[Position]] -> [[Position]]
