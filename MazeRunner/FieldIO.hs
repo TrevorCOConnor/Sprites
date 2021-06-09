@@ -13,7 +13,7 @@ import Control.Concurrent
 
 
 radius :: Int
-radius = 10
+radius = 30
 
 
 width :: Int

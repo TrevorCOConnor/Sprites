@@ -26,11 +26,6 @@ rescalePoint :: Position -> Position
 rescalePoint (x, y) = (x*2, y*2)
 
 
-secondsToMilliseconds :: Float -> Int
-secondsToMilliseconds s = round $ s*milli 
-    where milli = 1000000.0
-
-
 addStepToField :: Field -> [Position] -> [Position] -> IO ()
 addStepToField _ _ [] = return()
 addStepToField field corners (s: ss) = do
@@ -40,6 +35,5 @@ addStepToField field corners (s: ss) = do
            setCursorPosition 0 0
            let field' = placeObjOnField s field
            print field
-           threadDelay $ secondsToMilliseconds 0.05
+           -- threadDelay $ secondsToMilliseconds 0.05
            addStepToField field' corners ss
-
