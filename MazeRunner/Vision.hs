@@ -30,7 +30,7 @@ lineOfSight field p1 p2 = if p1 == p2 || nextstep == p2
     where nextstep = nextStep field p1 p2
 
 losForgiveness :: Float
-losForgiveness = 0.5
+losForgiveness = 0.1
 
 nextStep :: Field -> Position -> Position -> Position
 nextStep field p1 p2
@@ -61,7 +61,6 @@ inLineOfSight radius p1 p2 field = if sqrVisibility sqr && distance p1 p2 < radi
     where sqr = getSquare p2 field 
           getSqr p = getSquare p field
           radius' = fromIntegral radius :: Float
-
 
 edgeInLineOfSight :: Int -> Position -> Position -> Field -> Bool
 edgeInLineOfSight radius start end field = all (safeSquareCheck isVacant field) 
