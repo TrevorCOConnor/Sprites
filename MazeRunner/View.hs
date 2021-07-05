@@ -61,6 +61,7 @@ createSpot view p
     | safeIsObscure field p = '*'
     | safeIsEnd field p = 'E'
     | isJust wallspot = fromJust wallspot 
+    | isJust $ sqrmark = fromJust sqrmark 
     | isJust $ safeGetSquare p field = ' '
     | otherwise = '*'
     where fieldedge = fieldEdge field p
@@ -68,6 +69,7 @@ createSpot view p
           field = viewField view
           radius = viewRadius view
           focalPoint = viewFocalPoint view
+          sqrmark = safeGetSquare p field >>= sqrMark
 
 createViewDisplay :: View -> [String]
 createViewDisplay view = map (map (createSpot view)) centeredRows
@@ -82,3 +84,25 @@ centerDisplay radius (x, y) = map (map (addPositions disp))
     
 addPositions :: Position -> Position -> Position
 addPositions (a, b) (x, y) = (a+x, b+y)
+
+
+createWholeSpot :: Field -> Square -> Char 
+createWholeSpot field sqr
+  | not (sqrVisibility sqr) = '*'
+  | isJust fieldedge = fromJust fieldedge
+  | isJust wallspot = fromJust wallspot
+  | sqrEnd sqr = 'E'
+  | not (isVacant sqr) = head . show . sqrOccupant $ sqr 
+  | isJust $ sqrMark sqr = fromJust $ sqrMark sqr
+  | otherwise = ' '
+    where fieldedge = fieldEdge field (sqrPosition sqr)
+          wallspot = wallSpot field (sqrPosition sqr) 
+
+
+wholeFieldView :: Field -> String
+wholeFieldView = unlines . wholeFieldView'
+
+
+wholeFieldView' :: Field -> [String]
+wholeFieldView' field = map (map (createWholeSpot field)) rows
+    where rows = fieldRows field

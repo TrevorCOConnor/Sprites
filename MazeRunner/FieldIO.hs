@@ -6,15 +6,39 @@ import Vision
 import Actions
 import Field 
 import Movement
+import DisplayMethod
 import System.IO
 import Control.Exception
 import System.Console.ANSI
 import Control.Concurrent
+import Data.Maybe
 
 
-radius :: Int
-radius = 30
+data FieldState = FieldState { fsPosition :: Position
+                             , fsField :: Field
+                             , fsDisplayMethod :: DisplayMethod 
+                             }
 
+data ActionResult = FieldStateChange FieldState            |
+                    ActionMapChange [ActionMap]            |
+                    PartialApplication ActionResult Action |
+                    NoResult                               |
+                    Break
+
+data ActionState = TerminateActions | ActionState { stateFieldState :: FieldState
+                                                  , stateActionMaps :: [ActionMap]
+                                                  }
+
+movementKeys = MovementKeys { upKey = 'w'
+                            , downKey = 's'
+                            , leftKey = 'a'
+                            , rightKey = 'd'
+                            }
+
+displayMethods = [ visualMethod
+                 , linearMethod
+                 , easyMethod
+                 ]
 
 width :: Int
 width = 100
@@ -33,6 +57,10 @@ applyPath :: [Position] -> Field -> Field
 applyPath path field = foldr (makePositionVacant) field path
 
 
+defaultDisplayMethod :: DisplayMethod
+defaultDisplayMethod = visualMethod
+
+
 play :: IO()
 play = do
     do hSetBuffering stdin NoBuffering
@@ -46,40 +74,23 @@ play = do
     let field = placePlayerOnField (head randPath) field'
     hClearScreen stdout
     setCursorPosition (fst start) (snd start)
-    printVisualView start field
-    actionLoop start field
+    let fs = FieldState { fsField=field
+                        , fsDisplayMethod=defaultDisplayMethod
+                        , fsPosition=start
+                        }
+    printDisplayMethod fs
+    actionLoop ActionState{ stateActionMaps=defaultActions, stateFieldState=fs }
     showCursor
     return ()
 
 
-printField :: Field -> IO ()
-printField field = do
+printDisplayMethod :: FieldState -> IO () 
+printDisplayMethod fs = do
     setCursorPosition 0 0
-    print field
-
-
-printVisualField :: Position -> Field -> IO ()
-printVisualField pos = printField . linearVision' radius pos
-
-
-vRadius :: Float
-vRadius = 30
-
-
-printView :: View -> IO ()
-printView view = do
-    setCursorPosition 0 0
-    print view
-
-
-printVisualView :: Position -> Field -> IO ()
-printVisualView pos field = printView view
-    where field' = linearVision' radius pos field
-          view = View { viewRadius=vRadius 
-                      , viewField=field'
-                      , viewFocalPoint=pos
-                      }
-                             
+    let dm = fsDisplayMethod fs
+    let pos = fsPosition fs
+    let field = fsField fs
+    method dm pos field
 
 
 withEcho :: Bool -> IO a -> IO a
@@ -88,74 +99,126 @@ withEcho echo action = do
   bracket_ (hSetEcho stdin echo) (hSetEcho stdin old) action
 
 
-actionLoop :: Position -> Field -> IO ()
-actionLoop pos field = do
-    action <- readAction defaultActions
+actionLoop :: ActionState -> IO () 
+actionLoop astate = do
+    action <- readAction $ stateActionMaps astate
+    result <- applyAction (stateFieldState astate) action
+    newState <- handleResult astate result 
+    case newState of
+      TerminateActions -> return ()
+      _ -> actionLoop newState
+
+
+handleResult :: ActionState -> ActionResult -> IO (ActionState)
+handleResult _ Break = return TerminateActions 
+handleResult astate result =
+    case result of
+      FieldStateChange fs -> return $ astate { stateFieldState=fs }
+      ActionMapChange amaps -> return $ astate { stateActionMaps=amaps }
+      NoResult -> return $ astate
+      PartialApplication fstResult sndAction -> do
+          astate' <- handleResult astate fstResult
+          let fs = stateFieldState astate'
+          result <- applyAction fs sndAction
+          handleResult astate' result
+
+
+applyAction :: FieldState -> Action -> IO (ActionResult)
+applyAction fs action =
     case action of
         Movement movement -> do 
+            let pos = fsPosition fs
+            let field = fsField fs
             let (newPos, newField) = movement pos field 
             if sqrEnd $ getSquare newPos newField
                then do
                    hClearScreen stdout
                    putStrLn "You escaped!!!"
+                   return Break
             else do
-                printVisualView newPos newField
-                actionLoop newPos newField
+                let newFS = fs { fsPosition=newPos, fsField=newField }
+                printDisplayMethod newFS
+                return $ FieldStateChange newFS
         ModifyField modification -> do
-            let newField = modification pos field
-            printVisualView pos newField
-            actionLoop pos newField
+            let pos = fsPosition fs
+            let field = fsField fs
+            let newFS = fs { fsField=modification pos field }
+            printDisplayMethod newFS
+            return $ FieldStateChange newFS
         ModifyView view -> do
-            let newField = view field
-            printField newField
-            threadDelay $ secondsToMilliseconds 3
+            let newField = view $ fsField fs
+            printDisplayMethod $ fs { fsDisplayMethod=easyMethod }
+            _ <- getChar
             hClearScreen stdout
-            printVisualView pos field
-            actionLoop pos field
-        Escape -> return()
+            printDisplayMethod fs
+            return NoResult
+        ChangeView -> do
+            let display = fsDisplayMethod fs
+            let newDisplay = toggleView displayMethods display
+            hClearScreen stdout
+            let newFS = fs { fsDisplayMethod=newDisplay }
+            printDisplayMethod newFS
+            return $ FieldStateChange newFS
+        ToggleTraversed -> do
+            let display = fsDisplayMethod fs
+            let newDisplay = display { showTraversed = not (showTraversed display) }
+            let newFS = fs { fsDisplayMethod=newDisplay }
+            printDisplayMethod newFS
+            return $ FieldStateChange newFS
+        EmptyAction -> do
+            return NoResult
+        JointAction act1 act2 -> do
+            result <- applyAction fs act1
+            return $ PartialApplication result act2
+        Escape -> return Break
+        DirectionMap func -> do
+            let amaps = func movementKeys
+            newAction <- readAction amaps
+            applyAction fs newAction
 
 
 readAction :: [ActionMap] -> IO Action
 readAction actionMaps = do
     char <- withEcho False getChar
-    if char `elem` (map key actionMaps)
-       then mapAction actionMaps char
-       else readAction actionMaps
+    let act = lookup char $ toMap actionMaps
+    if isJust act
+       then return $ fromJust act
+       else return EmptyAction
 
 
-mapAction :: [ActionMap] -> Char -> IO Action
-mapAction [] _ = error "Unrecognized action."
-mapAction (aMap:ms) c = if key aMap == c 
-                            then action aMap
-                            else mapAction ms c
+movementActions :: [ActionMap]
+movementActions = createMovementMap movementKeys
 
 
 defaultActions :: [ActionMap]
-defaultActions = [ ActionMap {key='w', action=return $ Movement moveUp }
-                 , ActionMap {key='a', action=return $ Movement moveLeft }
-                 , ActionMap {key='s', action=return $ Movement moveDown }
-                 , ActionMap {key='d', action=return $ Movement moveRight }
-                 , ActionMap {key='p', action=readAction placeActions}
-                 , ActionMap {key='r', action=readAction removeActions}
-                 , ActionMap {key='v', action=return $ ModifyView (mapField makeVisible)}
-                 , ActionMap {key='\ESC', action= return Escape}
+defaultActions = movementActions ++
+                 [ ActionMap {key='v', action=ModifyView (mapField makeVisible)}
+                 , ActionMap {key='V', action=ChangeView }
+                 , ActionMap {key='x', action=markAction }
+                 , ActionMap {key='r', action=removeObjAction }
+                 , ActionMap {key='T', action=ToggleTraversed }
+                 , ActionMap {key='\ESC', action=Escape}
                  ]
 
 
-placeActions :: [ActionMap]
-placeActions = [ ActionMap {key='w', action=return $ ModifyField $ placeObjOnField . up}
-               , ActionMap {key='a', action=return $ ModifyField $ placeObjOnField . left}
-               , ActionMap {key='s', action=return $ ModifyField $ placeObjOnField . down}
-               , ActionMap {key='d', action=return $ ModifyField $ placeObjOnField . right}
-               ]
+toggleView :: [DisplayMethod] -> DisplayMethod -> DisplayMethod
+toggleView [] _ = defaultDisplayMethod
+toggleView ds current = if isNothing next
+                   then head ds
+                   else fromJust next 
+    where next = toggleView' ds current
 
 
-removeActions :: [ActionMap]
-removeActions = [ ActionMap {key='w', action=return $ ModifyField $ makePositionVacant . up}
-                , ActionMap {key='a', action=return $ ModifyField $ makePositionVacant . left}
-                , ActionMap {key='s', action=return $ ModifyField $ makePositionVacant . down}
-                , ActionMap {key='d', action=return $ ModifyField $ makePositionVacant . right}
-                ]
+toggleView' :: [DisplayMethod] -> DisplayMethod -> Maybe DisplayMethod
+toggleView' [] _ = Nothing
+toggleView' (d: ds) current = if d == current
+                                 then safeHead ds
+                                 else toggleView' ds current
+
+
+safeHead :: [a] -> Maybe a
+safeHead [] = Nothing
+safeHead (a: as) = Just a
 
 
 secondsToMilliseconds :: Float -> Int
