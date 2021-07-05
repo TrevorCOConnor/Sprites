@@ -10,7 +10,7 @@ move p1 p2 field = if validPos p2 field
                       then (p2, newField) 
                       else (p1, field)
     where occ = sqrOccupant $ getSquare p1 field
-          newField = modifySquare (placeOccupant occ) p2 . modifySquare makeVacant p1 $ field
+          newField = modifySquare (markTraversed . placeOccupant occ) p2 . modifySquare makeVacant p1 $ field
 
 moveUp :: Position -> Field -> (Position, Field)
 moveUp p = move p (up p)
@@ -19,8 +19,7 @@ moveDown :: Position -> Field -> (Position, Field)
 moveDown p = move p (down p)
 
 moveLeft :: Position -> Field -> (Position, Field)
-moveLeft p = move p (left p)
-
+moveLeft p = move p (left p) 
 moveRight :: Position -> Field -> (Position, Field)
 moveRight p = move p (right p)
 
@@ -51,6 +50,12 @@ placeObj = place ContainsObject
 placeObjOnField :: Position -> Field -> Field
 placeObjOnField = modifySquare placeObj
 
+safePlaceObjOnField :: Position -> Field -> Field
+safePlaceObjOnField pos field = if isJust vacancy && fromJust vacancy
+                                   then placeObjOnField pos field
+                                   else field
+    where vacancy = (safeGetSquare pos field) >>= (Just . isVacant)
+
 placeObjListOnField :: Field -> [Position] -> Field
 placeObjListOnField = foldr placeObjOnField 
 
@@ -58,13 +63,19 @@ placePlayer :: Square -> Square
 placePlayer = place ContainsPlayer
 
 placePlayerOnField :: Position -> Field -> Field
-placePlayerOnField = modifySquare placePlayer
+placePlayerOnField = modifySquare $ markTraversed . placePlayer
 
 placeEnd :: Square -> Square
 placeEnd sqr = sqr {sqrEnd = True}
 
 placeEndOnField :: Position -> Field -> Field
 placeEndOnField = modifySquare placeEnd
+
+markTraversed :: Square -> Square
+markTraversed sqr = sqr { sqrTraversed = True }
+
+markSquare :: Char -> Square -> Square
+markSquare c sqr = sqr { sqrMark = Just c }
 
 makeVacant :: Square -> Square
 makeVacant sqr = sqr { sqrOccupant = Vacant }
@@ -125,9 +136,7 @@ safeIsObscure = safeSquareCheck (not . sqrVisibility)
 safeIsEnd :: Field -> Position -> Bool
 safeIsEnd = safeSquareCheck sqrEnd
 
-
 safeSquareCheck :: (Square -> Bool) -> (Field -> Position -> Bool)
 safeSquareCheck func = newFunc 
     where newFunc field p = isJust value && fromJust value
             where value = safeGetSquare p field >>= (Just . func)
-

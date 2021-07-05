@@ -17,11 +17,15 @@ radialVision radius position = mapField withinRadius
                              then makeVisible sqr 
                              else makeObscure sqr
 
-linearVision' :: Int -> Position -> Field -> Field
-linearVision' radius pos field = mapField withinLine field
+linearVision :: Int -> Position -> Field -> Field
+linearVision radius pos field = mapField withinLine field
     where withinLine sqr = if inLineOfSight radius pos (sqrPosition sqr) field
-                              then makeVisible sqr
+                              then  sqr
                               else makeObscure sqr
+
+
+noVision :: Position -> Field -> Field
+noVision pos field = field
 
 lineOfSight :: Field -> Position -> Position -> [Position]
 lineOfSight field p1 p2 = if p1 == p2 || nextstep == p2

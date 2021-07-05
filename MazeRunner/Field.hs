@@ -1,9 +1,12 @@
 module Field
     ( Field(..)
     , createField
+    , showMarkedField
     , Square(..)
     , Occupant(..)
     ) where
+
+import Data.Maybe
 
 data Field = Field { fieldWidth  :: Width
                    , fieldLength :: Length
@@ -17,6 +20,7 @@ instance Show Field where
         ++ replicate (fieldWidth field) '='
             where showRow row = "\n|" ++ concat ( map show row ) ++ "|"
 
+
 showRow :: [Square] -> String
 showRow row = "\n|" ++ concat ( map show row ) ++ "|"
 
@@ -28,7 +32,9 @@ mapShowRow rows = concat $ map showRow rows
 data Square = Square { sqrPosition   :: (Int, Int)
                      , sqrOccupant   :: Occupant 
                      , sqrEnd        :: Bool
-                     , sqrVisibility :: Bool}
+                     , sqrVisibility :: Bool
+                     , sqrMark       :: Maybe Char
+                     , sqrTraversed  :: Bool}
 
 instance Show Square where
     show sqr = if sqrVisibility sqr
@@ -77,4 +83,28 @@ createSquare :: (Int, Int) -> Square
 createSquare (x, y) = Square { sqrPosition=(x, y)
                              , sqrOccupant=Vacant 
                              , sqrEnd=False
-                             , sqrVisibility=True}
+                             , sqrVisibility=True
+                             , sqrMark=Nothing
+                             , sqrTraversed=False}
+
+showMarkedField :: Field -> String
+showMarkedField field = ' ' : replicate (fieldWidth field) '='
+        ++ (concat $ map showMarkedRow $ fieldRows field)
+        ++ "\n "
+        ++ replicate (fieldWidth field) '═'
+            where showRow row = "\n|" ++ concat ( map show row ) ++ "║"
+
+
+showMarkedRow :: [Square] -> String
+showMarkedRow row = "\n|" ++ concat ( map showMarkedSquare row ) ++ "|"
+
+
+showMarkedSquare :: Square -> String
+showMarkedSquare sqr = if sqrVisibility sqr
+                          then sqrShow
+                          else "#"
+    where sqrShow 
+            | sqrEnd sqr = "E"
+            | sqrOccupant sqr /= Vacant = show $ sqrOccupant sqr
+            | isJust $ sqrMark sqr = show $ fromJust $ sqrMark sqr  
+            | otherwise = show $ sqrOccupant sqr
