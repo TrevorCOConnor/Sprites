@@ -1,19 +1,20 @@
 module Square where
 
--- Haskell Core Imports
+-- Core Haskell
 import Control.Concurrent.MVar
+import Control.Monad (liftM)
 
 
--- Module Imports
+-- Internal Modules
 import Sprite
 
 
 -- Data Defintions
-data Occupant = Vacant | ContainsSprite SpriteContainer  
+data Occupant = ObjectOccupant | SpriteOccupant SpriteContainer  
 
 instance Show Occupant where
-    show (Vacant) = " "
-    show (ContainsSprite _) = "s"
+    show (ObjectOccupant) = "#"
+    show (SpriteOccupant _) = "s"
 
 
 data Square = Square { sqrPosition :: Position
@@ -24,12 +25,30 @@ data Square = Square { sqrPosition :: Position
 -- Creation Functions
 newSquare :: Position -> IO Square
 newSquare p = do 
-    squareContent <- newMVar Vacant
+    squareContent <- newEmptyMVar
     return Square { sqrPosition=p
                   , sqrContent=squareContent
                   }
 
 
--- Display Functions
-displaySquare :: Square -> IO (String)
-displaySquare sqr = (readMVar . sqrContent) sqr >>= return . show
+-- Query Functions
+isOccupiedSquare :: Square -> IO Bool
+isOccupiedSquare =  isEmptyMVar . sqrContent 
+
+
+-- Manipulate Functions
+putOccupant :: Occupant -> Square -> IO () 
+putOccupant occ sqr = do
+    _ <- tryPutMVar occ (sqrContent sqr)
+    return ()
+
+
+takeOccupant :: Square -> IO (Maybe Occupant)
+takeOccupant = tryTakeMVar . sqrContent
+
+
+swapOccupant :: Occupant -> Square -> IO (Maybe Occupant)
+swapOccupant newOcc sqr = do
+    oldOcc <- takeOccupant sqr 
+    putOccupant newOcc sqr
+    return oldOcc
