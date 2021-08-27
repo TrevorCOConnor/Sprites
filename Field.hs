@@ -42,23 +42,3 @@ fieldRows fld = [ [ fromJust $ Map.lookup (x, y) fieldMap | x <- [1..width] ]
                 ]
     where (width, height) = fldSize fld
           fieldMap = fldMap fld
-
-
--- Display Functions
-fieldDisplayCaps :: Field -> String
-fieldDisplayCaps fld = '+' : replicate (fst (fldSize fld)) '-' ++ "+" 
-
-
-enumerateRows :: [String] -> [String]
-enumerateRows = map (\(e, r) -> (bufferString e) ++ "|" ++ r ++ "|") . zip (map show [1..])
-    where bufferString s = (replicate (2 - (length s)) ' ') ++ s 
-
-
-displayableField :: Field -> IO String
-displayableField fld = do
-    displayRows <- sequence $ map (sequence . (map displaySquare)) (fieldRows fld) 
-    let cap = '+' : replicate (fst (fldSize fld)) '-' ++ "+"
-    let concatRows = map concat displayRows
-    let enumeratedRows = enumerateRows concatRows
-    let unlinedRows = unlines enumeratedRows
-    return $ cap ++ "\n" ++ unlinedRows ++ cap
