@@ -33,13 +33,13 @@ newSquare p = do
 
 -- Query Functions
 isOccupiedSquare :: Square -> IO Bool
-isOccupiedSquare =  isEmptyMVar . sqrContent 
+isOccupiedSquare = (liftM not) . (isEmptyMVar . sqrContent)
 
 
 -- Manipulate Functions
 putOccupant :: Occupant -> Square -> IO () 
 putOccupant occ sqr = do
-    _ <- tryPutMVar occ (sqrContent sqr)
+    _ <- tryPutMVar (sqrContent sqr) occ
     return ()
 
 
