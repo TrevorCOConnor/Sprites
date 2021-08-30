@@ -7,6 +7,7 @@ import Control.Monad
 -- Internal Modules
 import Field
 import Square
+import Sprite
 
 
 -- Helper Functions
