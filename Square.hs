@@ -36,11 +36,17 @@ isOccupiedSquare :: Square -> IO Bool
 isOccupiedSquare = (liftM not) . (isEmptyMVar . sqrContent)
 
 
+readOccupant :: Square -> IO (Maybe Occupant)
+readOccupant sqr = do
+    let content = sqrContent sqr
+    tryReadMVar content
+
+
 -- Manipulate Functions
-putOccupant :: Occupant -> Square -> IO () 
+putOccupant :: Occupant -> Square -> IO Bool 
 putOccupant occ sqr = do
-    _ <- tryPutMVar (sqrContent sqr) occ
-    return ()
+    status <- tryPutMVar (sqrContent sqr) occ
+    return status
 
 
 takeOccupant :: Square -> IO (Maybe Occupant)
