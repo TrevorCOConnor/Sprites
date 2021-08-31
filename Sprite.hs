@@ -34,8 +34,12 @@ data Sprite = Sprite { sprName :: String
                      }
 
 
+data Team = GreenTeam | RedTeam
+
+
 data SpriteContainer_ = SpriteContainer_ { sprPosition :: Maybe Position
                                          , sprite :: Sprite
+                                         , sprTeam :: Team 
                                          }
 
 
@@ -52,12 +56,28 @@ extractSpritePosition (SpriteContainer innerContainer) = do
     return $ sprPosition sprCon
 
 
+extractSpriteTeam :: SpriteContainer -> IO Team 
+extractSpriteTeam (SpriteContainer innerContainer) = do
+    sprCon <- readMVar innerContainer
+    return $ sprTeam sprCon
+
+
+
 -- Manipulate Functions
-newSpriteContainer :: Sprite -> Maybe Position -> IO SpriteContainer
-newSpriteContainer sprite mpos = newMVar innerContainer >>= return . SpriteContainer
+newSpriteContainer :: Sprite -> Team -> Maybe Position -> IO SpriteContainer
+newSpriteContainer sprite team mpos = newMVar innerContainer >>= return . SpriteContainer
     where innerContainer = SpriteContainer_ { sprPosition=mpos 
                                              , sprite=sprite
+                                             , sprTeam=team
                                              }
+
+
+newGreenSpriteContainer :: Sprite -> Maybe Position -> IO SpriteContainer
+newGreenSpriteContainer sprite mpos = newSpriteContainer sprite GreenTeam mpos
+
+
+newRedSpriteContainer :: Sprite -> Maybe Position -> IO SpriteContainer
+newRedSpriteContainer sprite mpos = newSpriteContainer sprite RedTeam mpos
 
 
 updateSpritePosition :: SpriteContainer -> Position -> IO ()

@@ -3,7 +3,7 @@ module Field where
 -- Haskell Core Imports
 import Control.Concurrent.MVar
 import qualified Data.Map as Map
-import Control.Monad (liftM, liftM2)
+import Control.Monad (liftM, liftM2, liftM3, join)
 import Data.Maybe
 
 
@@ -76,17 +76,16 @@ right (x, y) = (x+1, y)
 
 move :: Field -> Position -> Position -> IO Bool
 move fld start end = do
-    if (validPos fld start) && (validPos fld end)
-       then do
-        let firstSquare = getSquare_ fld start
-        let secondSquare = getSquare_ fld end
-        mover <- takeOccupant firstSquare
-        if isJust mover
-           then do 
-               putOccupant (fromJust mover) secondSquare
-               return True
-           else return False 
-       else return False
+    let firstSquare = getSquare fld start
+    let secondSquare = getSquare fld end
+    mover <- sequence (liftM takeOccupant firstSquare) >>= return . join
+    maybePut <- sequence $ liftM2 putOccupant mover secondSquare 
+    let put = fromMaybe False maybePut
+    if put
+       then return True
+       else do
+           sequence $ liftM2 putOccupant mover firstSquare 
+           return False
 
 
 moveUp :: Field -> Position -> IO Bool
@@ -107,38 +106,38 @@ moveRight fld start = move fld start (right start)
 
 place :: Field -> Position -> Occupant -> IO Bool
 place fld pos occ = do
-    if validPos fld pos
-       then do
-           let square = getSquare_ fld pos
-           putOccupant occ square
-           return True
-       else return False
+    let square = getSquare fld pos
+    put <- sequence $ liftM2 putOccupant (Just occ) square
+    return $ fromMaybe False put
 
 
 placeObject :: Field -> Position -> IO Bool
 placeObject fld pos = place fld pos ObjectOccupant
 
 
-placeSprite :: Field -> Position -> Sprite -> IO (Maybe SpriteContainer)
-placeSprite fld pos spr = do
-    spriteContainer <- newSpriteContainer spr (Just pos)
+placeSprite :: Field -> Position -> Sprite -> Team -> IO (Maybe SpriteContainer)
+placeSprite fld pos spr team = do
+    spriteContainer <- newSpriteContainer spr team (Just pos)
     placed <- place fld pos (SpriteOccupant spriteContainer) 
     if placed
        then return $ Just $ spriteContainer
        else return Nothing
 
 
+placeGreenSprite :: Field -> Position -> Sprite -> IO (Maybe SpriteContainer)
+placeGreenSprite fld pos spr = placeSprite fld pos spr GreenTeam
+
+placeRedSprite :: Field -> Position -> Sprite -> IO (Maybe SpriteContainer)
+placeRedSprite fld pos spr = placeSprite fld pos spr RedTeam
+
+
 moveSprite :: Field -> (Position -> Position) -> SpriteContainer -> IO Bool
 moveSprite fld movement sprCon = do
-    mSpritePosition <- extractSpritePosition sprCon
-    if isNothing mSpritePosition
-       then return False 
-       else do
-        let spritePosition = fromJust mSpritePosition
-        let newPosition = movement spritePosition
-        moved <- move fld spritePosition newPosition
-        if moved
-           then do 
-               updateSpritePosition sprCon newPosition
-               return True
-           else return False
+    spritePosition <- extractSpritePosition sprCon
+    let newPosition = liftM movement spritePosition
+    moved <- sequence $ liftM3 move (Just fld) spritePosition newPosition
+    if fromMaybe False moved
+        then do
+            updateSpritePosition sprCon (fromJust newPosition)
+            return True
+        else return False

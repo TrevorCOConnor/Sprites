@@ -3,11 +3,31 @@ module TerminalDisplay where
 -- Core Haskell
 import Control.Concurrent.MVar
 import Control.Monad
+import Data.Maybe
+
 
 -- Internal Modules
 import Field
 import Square
 import Sprite
+
+
+-- Colors
+newtype Color = Color String
+escapeChar :: Char
+escapeChar = '\ESC' 
+
+
+reset :: String
+reset = escapeChar : "[0m"
+
+
+green :: Color
+green = Color $ escapeChar : "[32m"
+
+
+red :: Color
+red = Color $ escapeChar : "[31m"
 
 
 -- Helper Functions
@@ -20,13 +40,46 @@ bufferStringRight size txt = (take len txt) ++ (replicate (size - len) ' ')
     where len = min (length txt) size
 
 
+applyColor :: Color -> String -> String
+applyColor (Color color) str = color ++ str ++ reset
+
+
 -- Display Functions
+spriteChar :: String
+spriteChar = "S"
+
+
+objectChar :: String
+objectChar = "#"
+
+
+vacantChar :: String
+vacantChar = " "
+
+
+displaySpriteContainer_ :: SpriteContainer_ -> String
+displaySpriteContainer_ sprCon = 
+    case sprTeam sprCon of
+      GreenTeam -> applyColor green spriteChar
+      RedTeam -> applyColor red spriteChar
+
+
+displaySpriteContainer :: SpriteContainer -> IO String
+displaySpriteContainer (SpriteContainer innerContainer) = do
+    sprCon <- readMVar innerContainer
+    return $ displaySpriteContainer_ sprCon
+
+
+displayOccupant :: Occupant -> IO (String)
+displayOccupant ObjectOccupant = return objectChar
+displayOccupant (SpriteOccupant sprCon) = displaySpriteContainer sprCon
+
+
 displaySquare :: Square -> IO (String)
 displaySquare sqr = do
-    occupied <- isOccupiedSquare sqr
-    if occupied
-        then (liftM show) . readMVar . sqrContent $ sqr 
-        else return " "
+    occupant <- readOccupant sqr
+    displayableOccupant <- sequence $ liftM displayOccupant occupant
+    return $ fromMaybe " " displayableOccupant
 
 
 -- Field
