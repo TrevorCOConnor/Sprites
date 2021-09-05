@@ -2,10 +2,12 @@ module Actions where
 
 
 newtype Power = Power Int
-newtype DamageType = DamageType Int
 newtype ActionRange = ActionRange Int
 newtype Cost = Cost Int
 newtype TargetCount = TargetCount Int
+
+
+data DamageType = PhysicalDamage | MagicalDamage
 
 
 data ActionType = Attack | ActionMovement

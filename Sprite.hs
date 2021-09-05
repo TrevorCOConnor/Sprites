@@ -1,31 +1,13 @@
 module Sprite where
 
 import Control.Concurrent.MVar
+import Attributes
 
 
 type Position = (Int, Int)
 
 
 data SpriteType = Fire | Water | Earth | Air
-
-
-newtype HealthPoints = HealthPoints Int
-newtype Speed = Speed Int
-newtype Endurance = Endurance Int
-newtype PhysicalAttack = PhysicalAttack Int
-newtype MagicalAttack = MagicalAttack Int
-newtype PhysicalDefense = PhysicalDefense Int
-newtype MagicalDefense = MagicalDefense Int
-
-
-data Attributes = Attributes { healthPoints :: HealthPoints
-                             , speed :: Speed
-                             , endurance :: Endurance
-                             , phyiscalAttack :: PhysicalAttack
-                             , magicalAttack :: MagicalAttack
-                             , physicalDefense :: PhysicalDefense
-                             , magicalDefense :: MagicalDefense
-                             }
 
 
 data Sprite = Sprite { sprName :: String
@@ -37,9 +19,10 @@ data Sprite = Sprite { sprName :: String
 data Team = GreenTeam | RedTeam
 
 
-data SpriteContainer_ = SpriteContainer_ { sprPosition :: Maybe Position
-                                         , sprite :: Sprite
-                                         , sprTeam :: Team 
+data SpriteContainer_ = SpriteContainer_ { conPosition :: Maybe Position
+                                         , conSprite :: Sprite
+                                         , conAttributes :: Attributes
+                                         , conTeam :: Team 
                                          }
 
 
@@ -50,26 +33,33 @@ extractInnerContainer :: SpriteContainer -> MVar SpriteContainer_
 extractInnerContainer (SpriteContainer innerContainer) = innerContainer
 
 
-extractSpritePosition :: SpriteContainer -> IO (Maybe Position)
-extractSpritePosition (SpriteContainer innerContainer) = do
-    sprCon <- readMVar innerContainer
-    return $ sprPosition sprCon
+extractContainerPosition :: SpriteContainer -> IO (Maybe Position)
+extractContainerPosition sprCon = do
+    sprCon_ <- readMVar $ extractInnerContainer sprCon
+    return $ conPosition sprCon_
+
+
+extractSpriteAttributes :: SpriteContainer -> IO (Attributes)
+extractSpriteAttributes sprCon = do
+    sprCon_ <- readMVar $ extractInnerContainer sprCon
+    let sprite = conSprite sprCon_
+    return $ sprAttributes sprite
 
 
 extractSpriteTeam :: SpriteContainer -> IO Team 
 extractSpriteTeam (SpriteContainer innerContainer) = do
     sprCon <- readMVar innerContainer
-    return $ sprTeam sprCon
+    return $ conTeam sprCon
 
 
-
--- Manipulate Functions
+-- Create Functions
 newSpriteContainer :: Sprite -> Team -> Maybe Position -> IO SpriteContainer
 newSpriteContainer sprite team mpos = newMVar innerContainer >>= return . SpriteContainer
-    where innerContainer = SpriteContainer_ { sprPosition=mpos 
-                                             , sprite=sprite
-                                             , sprTeam=team
-                                             }
+    where innerContainer = SpriteContainer_ { conPosition=mpos 
+                                            , conSprite=sprite
+                                            , conAttributes=sprAttributes sprite
+                                            , conTeam=team
+                                            }
 
 
 newGreenSpriteContainer :: Sprite -> Maybe Position -> IO SpriteContainer
@@ -80,13 +70,36 @@ newRedSpriteContainer :: Sprite -> Maybe Position -> IO SpriteContainer
 newRedSpriteContainer sprite mpos = newSpriteContainer sprite RedTeam mpos
 
 
+-- Manipulate Functions
 updateSpritePosition :: SpriteContainer -> Position -> IO ()
-updateSpritePosition (SpriteContainer innerContainer) pos = 
-    modifyMVar_ innerContainer (return . updateSpritePosition_ pos)
+updateSpritePosition sprCon pos = do 
+    let sprCon_ = extractInnerContainer sprCon
+    modifyMVar_ sprCon_ (\con -> return $ con {conPosition=(Just pos)})
 
 
-updateSpritePosition_ :: Position -> SpriteContainer_ -> SpriteContainer_
-updateSpritePosition_ pos sprCon = sprCon {sprPosition=(Just pos)}
+updateSpriteAttribute :: SpriteContainer -> (Attributes -> Attributes) -> IO ()
+updateSpriteAttribute sprCon func = do
+    oldAttributes <- extractSpriteAttributes sprCon
+    let newAttributes = func oldAttributes
+    let sprCon_ = extractInnerContainer sprCon
+    modifyMVar_ sprCon_ (\con -> return $ con{conAttributes=newAttributes})
+
+
+modifyAttribute :: (AttributeValue a) => SpriteContainer -> (a -> a) -> IO ()
+modifyAttribute sprCon  = do
+    spriteAttributes <- extractSpriteAttributes sprCon 
+    let currentAttribute =  spriteAttributes
+    let newHealth = applyToAttributes (-) currentHealth damage
+
+
+resetStamina :: SpriteContainer -> IO ()
+resetStamina sprCon = do
+    baseAttributes <- extractSpriteAttributes sprCon
+    let baseStamina = stamina baseAttributes
+    let mvar = extractInnerContainer sprCon
+    sprCon_ <- readMVar mvar
+    let newAttributes = updateAttribute baseStamina $ conAttributes sprCon_
+    modifyMVar_ mvar (\x -> return x {conAttributes=newAttributes})
 
 
 
@@ -98,8 +111,8 @@ dummy = Sprite { sprName="Dummy"
                }
     where dummyAttributes = Attributes { healthPoints=HealthPoints 10
                                        , speed=Speed 10
-                                       , endurance=Endurance 10
-                                       , phyiscalAttack=PhysicalAttack 10
+                                       , stamina=Stamina 10
+                                       , physicalAttack=PhysicalAttack 10
                                        , magicalAttack=MagicalAttack 10
                                        , physicalDefense=PhysicalDefense 10
                                        , magicalDefense=MagicalDefense 10
