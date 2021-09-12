@@ -133,11 +133,11 @@ placeRedSprite fld pos spr = placeSprite fld pos spr RedTeam
 
 moveSprite :: Field -> (Position -> Position) -> SpriteContainer -> IO Bool
 moveSprite fld movement sprCon = do
-    spritePosition <- extractContainerPosition sprCon
-    let newPosition = liftM movement spritePosition
-    moved <- sequence $ liftM3 move (Just fld) spritePosition newPosition
+    containerPosition <- getContainerPosition sprCon
+    let newPosition = liftM movement containerPosition
+    moved <- sequence $ liftM3 move (Just fld) containerPosition newPosition
     if fromMaybe False moved
         then do
-            updateSpritePosition sprCon (fromJust newPosition)
+            updateContainerPosition sprCon (fromJust newPosition)
             return True
         else return False
