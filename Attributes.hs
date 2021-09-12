@@ -1,79 +1,38 @@
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Attributes where
+
+import Control.Lens hiding (element)
+import Control.Lens.TH
 
 
 -- Definitions
 newtype HealthPoints = HealthPoints Int
+    deriving (Num, Show, Eq, Ord)
 newtype Speed = Speed Int
+    deriving (Num, Show, Eq, Ord)
 newtype Stamina = Stamina Int
+    deriving (Num, Show, Eq, Ord)
 newtype PhysicalAttack = PhysicalAttack Int
+    deriving (Num, Show, Eq, Ord)
 newtype MagicalAttack = MagicalAttack Int
+    deriving (Num, Show, Eq, Ord)
 newtype PhysicalDefense = PhysicalDefense Int
+    deriving (Num, Show, Eq, Ord)
 newtype MagicalDefense = MagicalDefense Int
+    deriving (Num, Show, Eq, Ord)
 
 
-class AttributeValue a where
-    updateAttribute :: a -> Attributes -> Attributes
-
-    extractAttributeInt :: a -> Int
-
-    embedAttribute :: Int -> a
-
-    extractAttributeFloat :: a -> Float
-    extractAttributeFloat x = fromIntegral (extractAttributeInt x) :: Float
-
-    applyToAttributes :: (Int -> Int -> Int) -> a -> a -> a
-    applyToAttributes func x y = embedAttribute $ func x' y'
-        where x' = extractAttributeInt x
-              y' = extractAttributeInt y
-
-
-instance AttributeValue HealthPoints where
-    updateAttribute hp attrs = attrs {healthPoints=hp}
-    extractAttributeInt (HealthPoints hp) = hp
-    embedAttribute x = HealthPoints x
-
-
-instance AttributeValue Speed where
-    updateAttribute spd attrs = attrs {speed=spd}
-    extractAttributeInt (Speed spd) = spd
-    embedAttribute x = Speed x
-    
-
-instance AttributeValue Stamina where
-    updateAttribute stm attrs = attrs {stamina=stm}
-    extractAttributeInt (Stamina stm) = stm
-    embedAttribute x = Stamina x
-
-
-instance AttributeValue PhysicalAttack where
-    updateAttribute phyAtk attrs = attrs {physicalAttack=phyAtk}
-    extractAttributeInt (PhysicalAttack phyAtk) = phyAtk
-    embedAttribute x = PhysicalAttack x
-
-
-instance AttributeValue MagicalAttack where
-    updateAttribute magAtk attrs = attrs {magicalAttack=magAtk}
-    extractAttributeInt (MagicalAttack magAtk) = magAtk
-    embedAttribute x = MagicalAttack x
-
-
-instance AttributeValue PhysicalDefense where
-    updateAttribute phyDef attrs = attrs {physicalDefense=phyDef}
-    extractAttributeInt (PhysicalDefense phyDef) = phyDef
-    embedAttribute x = PhysicalDefense x
-
-
-instance AttributeValue MagicalDefense where
-    updateAttribute magDef attrs = attrs {magicalDefense=magDef}
-    extractAttributeInt (MagicalDefense magDef) = magDef
-    embedAttribute x = MagicalDefense x
-
-
-data Attributes = Attributes { healthPoints :: HealthPoints
-                             , speed :: Speed
-                             , stamina :: Stamina
-                             , physicalAttack :: PhysicalAttack
-                             , magicalAttack :: MagicalAttack
-                             , physicalDefense :: PhysicalDefense
-                             , magicalDefense :: MagicalDefense
+data Attributes = Attributes { _healthPoints :: HealthPoints
+                             , _speed :: Speed
+                             , _stamina :: Stamina
+                             , _physicalAttack :: PhysicalAttack
+                             , _magicalAttack :: MagicalAttack
+                             , _physicalDefense :: PhysicalDefense
+                             , _magicalDefense :: MagicalDefense
                              }
+
+
+$(makeLenses ''Attributes)

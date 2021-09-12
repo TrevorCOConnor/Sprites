@@ -6,27 +6,16 @@ import Attributes
 import Actions
 
 
--- applyAction :: SpriteContainer -> Action -> Field -> IO ()
--- applyAction sprCon action fld =
---     case actionType of
---       Attack -> attackAction sprCon action fld
-
-
--- attackAction :: SpriteContainer -> Action -> Field -> IO ()
--- attackAction sprite action fld = do
---     targets <- chooseEnemyTargets sprite action fld
-
-
--- chooseEnemyTargets :: SpriteContainer -> Action -> Field -> IO [Position] 
--- chooseEnemyTargets sprCon action fld = do
---     let numberOfTargets = actionTargetCount action
---     let range = actionRange action
---     origin <- extractContainerPosition sprCon 
+applyAction :: SpriteContainer -> Action -> Field -> IO ()
+applyAction sprCon action fld =
+    case actionType of
+      Attack -> applyAttack action sprCon fld
 
 
 applyAttack :: Action -> SpriteContainer -> SpriteContainer -> IO ()
 applyAttack attack attacker defender = do
     damage <- calculateDamage (actionDamageType attack) (actionPower attack) attacker defender
+    effects <- applyEffects (actionEffects attack)
     applyDamage defender 
 
 

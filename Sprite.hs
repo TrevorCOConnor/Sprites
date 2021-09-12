@@ -1,6 +1,11 @@
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Sprite where
 
 import Control.Concurrent.MVar
+import Control.Lens
+import Control.Lens.TH
+import Control.Monad (liftM)
 import Attributes
 
 
@@ -10,20 +15,22 @@ type Position = (Int, Int)
 data SpriteType = Fire | Water | Earth | Air
 
 
-data Sprite = Sprite { sprName :: String
-                     , sprType :: SpriteType
-                     , sprAttributes :: Attributes
+data Sprite = Sprite { _sprName :: String
+                     , _sprType :: SpriteType
+                     , _sprAttributes :: Attributes
                      }
+$(makeLenses ''Sprite)
 
 
 data Team = GreenTeam | RedTeam
 
 
-data SpriteContainer_ = SpriteContainer_ { conPosition :: Maybe Position
-                                         , conSprite :: Sprite
-                                         , conAttributes :: Attributes
-                                         , conTeam :: Team 
+data SpriteContainer_ = SpriteContainer_ { _conPosition :: Maybe Position
+                                         , _conSprite :: Sprite
+                                         , _conAttributes :: Attributes
+                                         , _conTeam :: Team 
                                          }
+$(makeLenses ''SpriteContainer_)
 
 
 data SpriteContainer = SpriteContainer (MVar SpriteContainer_)
@@ -33,32 +40,38 @@ extractInnerContainer :: SpriteContainer -> MVar SpriteContainer_
 extractInnerContainer (SpriteContainer innerContainer) = innerContainer
 
 
-extractContainerPosition :: SpriteContainer -> IO (Maybe Position)
-extractContainerPosition sprCon = do
-    sprCon_ <- readMVar $ extractInnerContainer sprCon
-    return $ conPosition sprCon_
+getContainerPosition :: SpriteContainer -> IO (Maybe Position)
+getContainerPosition (SpriteContainer sprCon_) = do
+    liftM _conPosition $ readMVar sprCon_
 
 
-extractSpriteAttributes :: SpriteContainer -> IO (Attributes)
-extractSpriteAttributes sprCon = do
-    sprCon_ <- readMVar $ extractInnerContainer sprCon
-    let sprite = conSprite sprCon_
-    return $ sprAttributes sprite
+getSpriteAttributes :: SpriteContainer -> IO (Attributes)
+getSpriteAttributes (SpriteContainer sprCon_) = do
+    liftM (view (conSprite . sprAttributes)) $ readMVar sprCon_
 
 
-extractSpriteTeam :: SpriteContainer -> IO Team 
-extractSpriteTeam (SpriteContainer innerContainer) = do
-    sprCon <- readMVar innerContainer
-    return $ conTeam sprCon
+getSpriteAttribute :: SpriteContainer -> Lens' Attributes a -> IO (a)
+getSpriteAttribute (SpriteContainer sprCon_) attr = do
+    liftM (view (conSprite . sprAttributes . attr)) $ readMVar sprCon_
+
+
+getContainerAttribute :: SpriteContainer -> Lens' Attributes a -> IO (a)
+getContainerAttribute (SpriteContainer sprCon_) attr = do
+    liftM (view (conAttributes . attr)) $ readMVar sprCon_
+
+
+getContainerTeam :: SpriteContainer -> IO Team 
+getContainerTeam (SpriteContainer sprCon_) = do
+    liftM _conTeam $ readMVar sprCon_
 
 
 -- Create Functions
 newSpriteContainer :: Sprite -> Team -> Maybe Position -> IO SpriteContainer
 newSpriteContainer sprite team mpos = newMVar innerContainer >>= return . SpriteContainer
-    where innerContainer = SpriteContainer_ { conPosition=mpos 
-                                            , conSprite=sprite
-                                            , conAttributes=sprAttributes sprite
-                                            , conTeam=team
+    where innerContainer = SpriteContainer_ { _conPosition=mpos 
+                                            , _conSprite=sprite
+                                            , _conAttributes=_sprAttributes sprite
+                                            , _conTeam=team
                                             }
 
 
@@ -71,49 +84,47 @@ newRedSpriteContainer sprite mpos = newSpriteContainer sprite RedTeam mpos
 
 
 -- Manipulate Functions
-updateSpritePosition :: SpriteContainer -> Position -> IO ()
-updateSpritePosition sprCon pos = do 
-    let sprCon_ = extractInnerContainer sprCon
-    modifyMVar_ sprCon_ (\con -> return $ con {conPosition=(Just pos)})
+-- -- Core Functions
+updateContainerPosition :: SpriteContainer -> Position -> IO ()
+updateContainerPosition (SpriteContainer sprCon_) pos = do 
+    modifyMVar_ sprCon_ (return . over conPosition (const $ Just pos))
 
 
-updateSpriteAttribute :: SpriteContainer -> (Attributes -> Attributes) -> IO ()
-updateSpriteAttribute sprCon func = do
-    oldAttributes <- extractSpriteAttributes sprCon
-    let newAttributes = func oldAttributes
-    let sprCon_ = extractInnerContainer sprCon
-    modifyMVar_ sprCon_ (\con -> return $ con{conAttributes=newAttributes})
+modifyAttribute :: SpriteContainer -> Lens' Attributes a -> (a -> a) -> IO ()
+modifyAttribute (SpriteContainer sprCon_) lens modification = do
+    modifyMVar_ sprCon_ (return . over (conAttributes . lens) modification)
 
 
-modifyAttribute :: (AttributeValue a) => SpriteContainer -> (a -> a) -> IO ()
-modifyAttribute sprCon  = do
-    spriteAttributes <- extractSpriteAttributes sprCon 
-    let currentAttribute =  spriteAttributes
-    let newHealth = applyToAttributes (-) currentHealth damage
+resetAttribute :: Lens' Attributes a -> SpriteContainer -> IO ()
+resetAttribute attr (SpriteContainer sprCon_) = do
+    baseAttributes <- liftM (view (conSprite . sprAttributes . attr)) $ readMVar sprCon_
+    modifyMVar_ sprCon_ (return . over (conAttributes . attr) (const baseAttributes))
 
 
+-- -- Specific Functions
 resetStamina :: SpriteContainer -> IO ()
-resetStamina sprCon = do
-    baseAttributes <- extractSpriteAttributes sprCon
-    let baseStamina = stamina baseAttributes
-    let mvar = extractInnerContainer sprCon
-    sprCon_ <- readMVar mvar
-    let newAttributes = updateAttribute baseStamina $ conAttributes sprCon_
-    modifyMVar_ mvar (\x -> return x {conAttributes=newAttributes})
+resetStamina = resetAttribute stamina
 
+
+resetMovement :: SpriteContainer -> IO ()
+resetMovement = resetAttribute speed
+
+
+subtractMovement :: SpriteContainer -> IO ()
+subtractMovement sprCon = modifyAttribute sprCon speed (+ (-Speed 1))
 
 
 -- Example Sprite
 dummy :: Sprite
-dummy = Sprite { sprName="Dummy"
-               , sprType=Fire
-               , sprAttributes=dummyAttributes
+dummy = Sprite { _sprName="Dummy"
+               , _sprType=Fire
+               , _sprAttributes=dummyAttributes
                }
-    where dummyAttributes = Attributes { healthPoints=HealthPoints 10
-                                       , speed=Speed 10
-                                       , stamina=Stamina 10
-                                       , physicalAttack=PhysicalAttack 10
-                                       , magicalAttack=MagicalAttack 10
-                                       , physicalDefense=PhysicalDefense 10
-                                       , magicalDefense=MagicalDefense 10
+    where dummyAttributes = Attributes { _healthPoints=HealthPoints 10
+                                       , _speed=Speed 10
+                                       , _stamina=Stamina 10
+                                       , _physicalAttack=PhysicalAttack 10
+                                       , _magicalAttack=MagicalAttack 10
+                                       , _physicalDefense=PhysicalDefense 10
+                                       , _magicalDefense=MagicalDefense 10
                                        }

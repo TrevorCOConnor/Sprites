@@ -4,6 +4,7 @@ module TerminalDisplay where
 import Control.Concurrent.MVar
 import Control.Monad
 import Data.Maybe
+import System.Console.ANSI
 
 
 -- Internal Modules
@@ -12,8 +13,8 @@ import Square
 import Sprite
 
 
--- Colors
-newtype Color = Color String
+-- TDColors
+newtype TDColor = TDColor String
 escapeChar :: Char
 escapeChar = '\ESC' 
 
@@ -22,12 +23,12 @@ reset :: String
 reset = escapeChar : "[0m"
 
 
-green :: Color
-green = Color $ escapeChar : "[32m"
+green :: TDColor
+green = TDColor $ escapeChar : "[32m"
 
 
-red :: Color
-red = Color $ escapeChar : "[31m"
+red :: TDColor
+red = TDColor $ escapeChar : "[31m"
 
 
 -- Helper Functions
@@ -40,8 +41,8 @@ bufferStringRight size txt = (take len txt) ++ (replicate (size - len) ' ')
     where len = min (length txt) size
 
 
-applyColor :: Color -> String -> String
-applyColor (Color color) str = color ++ str ++ reset
+applyTDColor :: TDColor -> String -> String
+applyTDColor (TDColor color) str = color ++ str ++ reset
 
 
 -- Display Functions
@@ -59,9 +60,9 @@ vacantChar = " "
 
 displaySpriteContainer_ :: SpriteContainer_ -> String
 displaySpriteContainer_ sprCon = 
-    case sprTeam sprCon of
-      GreenTeam -> applyColor green spriteChar
-      RedTeam -> applyColor red spriteChar
+    case _conTeam sprCon of
+      GreenTeam -> applyTDColor green spriteChar
+      RedTeam -> applyTDColor red spriteChar
 
 
 displaySpriteContainer :: SpriteContainer -> IO String
@@ -116,12 +117,7 @@ cappedFieldDisplay :: Field -> IO String
 cappedFieldDisplay fld = liftM (fieldCapBody fldWidth) . fieldDisplay $ fld 
     where fldWidth = fst . fldSize $ fld
 
-
-displayableField :: Field -> IO String
-displayableField fld = do
-    displayRows <- sequence $ map (sequence . (map displaySquare)) (fieldRows fld) 
-    let cap = '+' : replicate (fst (fldSize fld)) '-' ++ "+"
-    let concatRows = map concat displayRows
-    let enumeratedRows = enumerateRows concatRows
-    let unlinedRows = unlines enumeratedRows
-    return $ cap ++ "\n" ++ unlinedRows ++ cap
+displayField :: Field -> IO ()
+displayField fld = do
+    clearScreen
+    cappedFieldDisplay fld >>= putStrLn
