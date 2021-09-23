@@ -11,24 +11,8 @@ import System.Console.ANSI
 import Field
 import Square
 import Sprite
+import Ansi
 
-
--- TDColors
-newtype TDColor = TDColor String
-escapeChar :: Char
-escapeChar = '\ESC' 
-
-
-reset :: String
-reset = escapeChar : "[0m"
-
-
-green :: TDColor
-green = TDColor $ escapeChar : "[32m"
-
-
-red :: TDColor
-red = TDColor $ escapeChar : "[31m"
 
 
 -- Helper Functions
@@ -39,10 +23,6 @@ bufferStringLeft size txt = (replicate (size - len) ' ') ++ (take len txt)
 bufferStringRight :: Int -> String -> String
 bufferStringRight size txt = (take len txt) ++ (replicate (size - len) ' ')
     where len = min (length txt) size
-
-
-applyTDColor :: TDColor -> String -> String
-applyTDColor (TDColor color) str = color ++ str ++ reset
 
 
 -- Display Functions
@@ -61,8 +41,8 @@ vacantChar = " "
 displaySpriteContainer_ :: SpriteContainer_ -> String
 displaySpriteContainer_ sprCon = 
     case _conTeam sprCon of
-      GreenTeam -> applyTDColor green spriteChar
-      RedTeam -> applyTDColor red spriteChar
+      GreenTeam -> applyColor green spriteChar
+      RedTeam -> applyColor red spriteChar
 
 
 displaySpriteContainer :: SpriteContainer -> IO String
