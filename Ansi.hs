@@ -67,3 +67,23 @@ numToBlock 1 = oneEigthBlock
 numToBlock 2 = threeFourthBlock
 numToBlock 3 = fiveEigthBlock
 numToBlcok 4 = sevenEigthBlock 
+
+
+ansiLength :: String -> Int
+ansiLength [] = 0
+ansiLength ('\ESC':'[':ss) = ansiLength $ tail $ dropWhile (/= 'm') ss ++ []
+ansiLength (s:ss) = 1 + ansiLength ss
+
+
+ansiTake :: Int -> String -> String
+ansiTake size = if size <= 0 
+                    then const []
+                    else ansiTake_ size
+
+
+ansiTake_ :: Int -> String -> String
+ansiTake_ 0 _ = []
+ansiTake_ _ [] = []
+ansiTake_ n ('\ESC':'[':ss) = '\ESC':'[':before ++ ansiTake_ (n+1) after
+    where (before, after) = break (== 'm') ss
+ansiTake_ n (s: ss) = s : ansiTake_ (n-1) ss

@@ -23,6 +23,7 @@ $(makeLenses ''Sprite)
 
 
 data Team = GreenTeam | RedTeam
+    deriving (Show)
 
 
 data SpriteContainer_ = SpriteContainer_ { _conPosition :: Maybe Position
