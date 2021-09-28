@@ -20,8 +20,8 @@ displayHealth (HealthPoints currentHp) (HealthPoints baseHp) = "HP: " ++ fullBar
           remBar = applyColor green $ (numToBlock mod5) : []
 
 
-displaySpriteContainerHealth :: SpriteContainer -> IO (String)
-displaySpriteContainerHealth sprCon = do
+displayContainerHealth :: SpriteContainer -> IO (String)
+displayContainerHealth sprCon = do
     baseHealth <- getSpriteAttribute sprCon healthPoints
     currentHealth <- getContainerAttribute sprCon healthPoints
     return $ displayHealth currentHealth baseHealth
@@ -36,8 +36,12 @@ displaySpriteName (SpriteContainer sprCon) = do
 displayContainerTeam :: SpriteContainer -> IO (String)
 displayContainerTeam (SpriteContainer sprCon) = do
     sprCon_ <- readMVar sprCon
-    return $ "Name: " ++ show $ view conTeam sprCon_
+    return $ "Team: " ++ (show $ view conTeam sprCon_)
 
 
-displaySpriteContainer :: SpriteContainer -> IO (String)
-displaySpriteContainer sprCon = undefined 
+displayContainerRoster :: SpriteContainer -> IO (String)
+displayContainerRoster sprCon = do
+    team <- displayContainerTeam sprCon
+    name <- displaySpriteName sprCon
+    health <- displayContainerHealth sprCon
+    return $ unlines [team, name, health]

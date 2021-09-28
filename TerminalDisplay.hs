@@ -12,17 +12,39 @@ import Field
 import Square
 import Sprite
 import Ansi
+import Roster
 
 
 
 -- Helper Functions
 bufferStringLeft :: Int -> String -> String
-bufferStringLeft size txt = (replicate (size - len) ' ') ++ (take len txt)
-    where len = min (length txt) size
+bufferStringLeft size txt = (replicate (size - len) ' ') ++ (ansiTake len txt)
+    where len = min (ansiLength txt) size
+
 
 bufferStringRight :: Int -> String -> String
-bufferStringRight size txt = (take len txt) ++ (replicate (size - len) ' ')
-    where len = min (length txt) size
+bufferStringRight size txt = (ansiTake len txt) ++ (replicate (size - len) ' ')
+    where len = min (ansiLength txt) size
+
+
+bufferLinesRight :: Int -> [String] -> [String]
+bufferLinesRight buffer = map (bufferStringRight buffer)
+
+
+bufferNumLines :: Int -> [String] -> [String]
+bufferNumLines n lines = lines ++ replicate (n - numLines) ""
+    where numLines = length lines
+
+
+mergeLines :: Int -> String -> String -> String
+mergeLines buffer left right = unlines $ [x ++ y | (x, y) <- zip bufferedLeft rightLines'] 
+    where leftLines = lines left
+          rightLines = lines right
+          maxLines = max (length leftLines) (length rightLines)
+          leftLines' = bufferNumLines maxLines leftLines
+          rightLines' = bufferNumLines maxLines rightLines
+          maxLeft = maximum $ map ansiLength leftLines
+          bufferedLeft = bufferLinesRight (maxLeft + buffer) leftLines'
 
 
 -- Display Functions
