@@ -119,6 +119,7 @@ cappedFieldDisplay :: Field -> IO String
 cappedFieldDisplay fld = liftM (fieldCapBody fldWidth) . fieldDisplay $ fld 
     where fldWidth = fst . fldSize $ fld
 
+
 displayField :: Field -> IO ()
 displayField fld = do
     clearScreen
