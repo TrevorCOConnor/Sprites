@@ -3,11 +3,31 @@ module Roster where
 -- Core Haskell
 import Control.Lens
 import Control.Concurrent.MVar
+import Data.List
 
 -- Local Modules
 import Ansi
 import Attributes
 import Sprite
+
+-- Data
+data FullRoster = FullRoster [Roster] [Roster]
+
+
+data Roster = Roster Int Team SpriteContainer
+
+
+-- Create Functions
+createRoster :: Int -> SpriteContainer -> IO Roster
+createRoster num sprCon = do 
+    team <- getContainerTeam sprCon
+    return $ Roster num team sprCon
+
+
+createFullRoster :: [SpriteContainer] -> IO FullRoster
+createFullRoster sprCons = do
+    rosters <- sequence $ map (\(num, spr) -> createRoster num spr) $ zip [1..] sprCons
+    return $ FullRoster [] rosters
 
 
 -- Display Functions
@@ -39,9 +59,20 @@ displayContainerTeam (SpriteContainer sprCon) = do
     return $ "Team: " ++ (show $ view conTeam sprCon_)
 
 
-displayContainerRoster :: SpriteContainer -> IO (String)
-displayContainerRoster sprCon = do
-    team <- displayContainerTeam sprCon
+displayRoster :: Roster -> IO (String)
+displayRoster (Roster _ _ sprCon) = do
     name <- displaySpriteName sprCon
     health <- displayContainerHealth sprCon
-    return $ unlines [team, name, health]
+    return $ unlines [name, health]
+    
+
+displaySelectedRoster :: Roster -> IO (String)
+displaySelectedRoster = fmap (applyColor backgroundWhite) . displayRoster 
+
+
+displayFullRoster :: FullRoster -> IO (String)
+displayFullRoster (FullRoster before (selected:after)) = do
+    before' <- sequence $ map displayRoster before
+    selected' <- displayRoster selected
+    after' <- sequence $ map displayRoster after
+    return $ intercalate "\n" $ before' ++ [selected'] ++ after'

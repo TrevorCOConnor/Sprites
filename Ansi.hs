@@ -18,6 +18,10 @@ backgroundGreen :: TColor
 backgroundGreen = TColor $ escapeChar : "[42m"
 
 
+backgroundWhite :: TColor
+backgroundWhite = TColor $ escapeChar : "[47m"
+
+
 red :: TColor
 red = TColor $ escapeChar : "[31m"
 
