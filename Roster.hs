@@ -11,37 +11,32 @@ import Sprite
 
 
 -- Display Functions
-displayHealth :: HealthPoints -> HealthPoints -> String
-displayHealth (HealthPoints currentHp) (HealthPoints baseHp) = "HP: " ++ fullBars ++ remBar
+displayHealth :: AnsiColor -> HealthPoints -> HealthPoints -> String
+displayHealth color (HealthPoints currentHp) (HealthPoints baseHp) = "HP: " ++ fullBars ++ remBar
     where percentage = (100 * currentHp) `div` baseHp
           percentage25 = percentage `div` 4
           mod5 = percentage `mod` 5
-          fullBars = applyColor green $ replicate percentage25 fullBlock
-          remBar = applyColor green $ (numToBlock mod5) : []
+          fullBars = applyColor color $ replicate percentage25 fullBlock
+          remBar = applyColor color $ (numToBlock mod5) : []
 
 
-displayContainerHealth :: SpriteContainer -> IO (String)
-displayContainerHealth sprCon = do
+displayContainerHealth :: AnsiColor -> SpriteContainer -> IO (String)
+displayContainerHealth color sprCon = do
     baseHealth <- getSpriteAttribute sprCon healthPoints
     currentHealth <- getContainerAttribute sprCon healthPoints
-    return $ displayHealth currentHealth baseHealth
+    return $ displayHealth color currentHealth baseHealth
 
 
-displaySpriteName :: SpriteContainer -> IO (String)
-displaySpriteName (SpriteContainer sprCon) = do
-    sprCon_ <- readMVar sprCon
-    return $ "Name: " ++ view (conSprite . sprName) sprCon_
-
-
-displayContainerTeam :: SpriteContainer -> IO (String)
-displayContainerTeam (SpriteContainer sprCon) = do
-    sprCon_ <- readMVar sprCon
-    return $ "Team: " ++ (show $ view conTeam sprCon_)
+displaySpriteName :: AnsiColor -> SpriteContainer -> IO (String)
+displaySpriteName color (SpriteContainer mvar) = do
+    sprCon_ <- readMVar mvar
+    return $ "Name: " ++ (applyColor color $ view (conSprite . sprName) sprCon_)
 
 
 displayContainerRoster :: SpriteContainer -> IO (String)
-displayContainerRoster sprCon = do
-    team <- displayContainerTeam sprCon
-    name <- displaySpriteName sprCon
-    health <- displayContainerHealth sprCon
-    return $ unlines [team, name, health]
+displayContainerRoster sprCon@(SpriteContainer mvar) = do
+    team <- fmap (view conTeam) (readMVar mvar) 
+    let teamColor = teamToColor team
+    name <- displaySpriteName teamColor sprCon
+    health <- displayContainerHealth teamColor sprCon
+    return $ unlines [name, health]
