@@ -8,6 +8,7 @@ import Data.List
 -- Local Modules
 import Ansi
 import Attributes
+
 import Sprite
 
 -- Data
@@ -15,6 +16,25 @@ data FullRoster = FullRoster [Roster] [Roster]
 
 
 data Roster = Roster Int Team SpriteContainer
+
+
+-- Aux Functions
+getInitiative :: SpriteContainer -> IO Int
+getInitiative sprCon = do
+    (Speed spd) <- getContainerAttribute sprCon speed
+    return spd
+
+
+sortOnInitiative :: [SpriteContainer] -> IO [SpriteContainer]
+sortOnInitiative sprCons = map fst <$> sortOn snd
+                                   <$> zip sprCons
+                                   <$> (sequence $ map getInitiative sprCons)
+                                   
+
+cycleFullRoster :: FullRoster -> FullRoster
+cycleFullRoster (FullRoster passed []) = (FullRoster [] (passed))
+cycleFullRoster (FullRoster passed (n:[])) = (FullRoster [] (passed ++ n))
+cycleFullRoster (FullRoster passed (n:ns)) = (FullRoster (passed ++ n) ns)
 
 
 -- Create Functions
@@ -31,40 +51,35 @@ createFullRoster sprCons = do
 
 
 -- Display Functions
-displayHealth :: HealthPoints -> HealthPoints -> String
-displayHealth (HealthPoints currentHp) (HealthPoints baseHp) = "HP: " ++ fullBars ++ remBar
+displayHealth :: AnsiColor -> HealthPoints -> HealthPoints -> String
+displayHealth color (HealthPoints currentHp) (HealthPoints baseHp) = "HP: " ++ fullBars ++ remBar
     where percentage = (100 * currentHp) `div` baseHp
           percentage25 = percentage `div` 4
           mod5 = percentage `mod` 5
-          fullBars = applyColor green $ replicate percentage25 fullBlock
-          remBar = applyColor green $ (numToBlock mod5) : []
+          fullBars = applyColor color $ replicate percentage25 fullBlock
+          remBar = applyColor color $ (numToBlock mod5) : []
 
 
-displayContainerHealth :: SpriteContainer -> IO (String)
-displayContainerHealth sprCon = do
+displayContainerHealth :: AnsiColor -> SpriteContainer -> IO (String)
+displayContainerHealth color sprCon = do
     baseHealth <- getSpriteAttribute sprCon healthPoints
     currentHealth <- getContainerAttribute sprCon healthPoints
-    return $ displayHealth currentHealth baseHealth
+    return $ displayHealth color currentHealth baseHealth
 
 
-displaySpriteName :: SpriteContainer -> IO (String)
-displaySpriteName (SpriteContainer sprCon) = do
-    sprCon_ <- readMVar sprCon
-    return $ "Name: " ++ view (conSprite . sprName) sprCon_
-
-
-displayContainerTeam :: SpriteContainer -> IO (String)
-displayContainerTeam (SpriteContainer sprCon) = do
-    sprCon_ <- readMVar sprCon
-    return $ "Team: " ++ (show $ view conTeam sprCon_)
+displaySpriteName :: AnsiColor -> SpriteContainer -> IO (String)
+displaySpriteName color (SpriteContainer mvar) = do
+    sprCon_ <- readMVar mvar
+    return $ "Name: " ++ (applyColor color $ view (conSprite . sprName) sprCon_)
 
 
 displayRoster :: Roster -> IO (String)
-displayRoster (Roster _ _ sprCon) = do
-    name <- displaySpriteName sprCon
-    health <- displayContainerHealth sprCon
+displayRoster (Roster _ team sprCon) = do
+    let teamColor = teamToColor team
+    name <- displaySpriteName teamColor sprCon
+    health <- displayContainerHealth teamColor sprCon
     return $ unlines [name, health]
-    
+
 
 displaySelectedRoster :: Roster -> IO (String)
 displaySelectedRoster = fmap (applyColor backgroundWhite) . displayRoster 
