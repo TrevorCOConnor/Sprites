@@ -13,7 +13,7 @@ import Square
 import Sprite
 import Ansi
 import Roster
-
+import BattleState
 
 
 -- Helper Functions
@@ -124,3 +124,14 @@ displayField :: Field -> IO ()
 displayField fld = do
     clearScreen
     cappedFieldDisplay fld >>= putStrLn
+
+-- BattleState
+mergeBuffer :: Int
+mergeBuffer = 3
+
+
+displayBattleState :: BattleState -> IO String
+displayBattleState (BattleState field fRoster) = do
+    fieldString <- cappedFieldDisplay field
+    rosterString <- displayFullRoster fRoster 
+    return $ mergeLines mergeBuffer fieldString rosterString

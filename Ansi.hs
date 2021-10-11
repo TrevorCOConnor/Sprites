@@ -1,7 +1,11 @@
 module Ansi where
 
+-- Local modules
+import Sprite
+
+
 -- Colors
-newtype TColor = TColor String
+newtype AnsiColor = AnsiColor String
 escapeChar :: Char
 escapeChar = '\ESC' 
 
@@ -10,20 +14,20 @@ reset :: String
 reset = escapeChar : "[0m"
 
 
-green :: TColor
-green = TColor $ escapeChar : "[32m"
+green :: AnsiColor
+green = AnsiColor $ escapeChar : "[32m"
 
 
-backgroundGreen :: TColor
-backgroundGreen = TColor $ escapeChar : "[42m"
+backgroundGreen :: AnsiColor
+backgroundGreen = AnsiColor $ escapeChar : "[42m"
 
 
-backgroundWhite :: TColor
-backgroundWhite = TColor $ escapeChar : "[47m"
+backgroundWhite :: AnsiColor
+backgroundWhite = AnsiColor $ escapeChar : "[47m"
 
 
-red :: TColor
-red = TColor $ escapeChar : "[31m"
+red :: AnsiColor
+red = AnsiColor $ escapeChar : "[31m"
 
 
 -- Blocks
@@ -61,8 +65,13 @@ oneEigthBlock =  '\9615'
 
 
 -- Functions
-applyColor :: TColor -> String -> String
-applyColor (TColor color) str = color ++ str ++ reset
+applyColor :: AnsiColor -> String -> String
+applyColor (AnsiColor color) str = color ++ str ++ reset
+
+
+teamToColor :: Team -> AnsiColor
+teamToColor RedTeam = red
+teamToColor GreenTeam = green
 
 
 numToBlock :: Int -> Char

@@ -35,6 +35,18 @@ createFieldMap (width, height) = list >>= return . Map.fromList
                   ]
 
 
+greenStartingPositions :: Position -> [Position]
+greenStartingPositions fieldSize = [ (x, y) | x <- [1, 3 .. (fst fieldSize + 1)]
+                                            , y <- [1..(halfField)] ]
+    where halfField = (snd fieldSize) `div` 2
+
+
+redStartingPositions :: Position -> [Position] 
+redStartingPositions fieldSize = [ (x, y) | x <- [1, 3 .. (fst fieldSize + 1)]
+                                          , y <- reverse $ [halfField..(snd fieldSize)] ]
+    where halfField = (snd fieldSize) `div` 2
+
+
 -- Query Functions
 fieldRows :: Field -> [[Square]]
 fieldRows fld = [ [ fromJust $ Map.lookup (x, y) fieldMap | x <- [1..width] ]
@@ -126,6 +138,7 @@ placeSprite fld pos spr team = do
 
 placeGreenSprite :: Field -> Position -> Sprite -> IO (Maybe SpriteContainer)
 placeGreenSprite fld pos spr = placeSprite fld pos spr GreenTeam
+
 
 placeRedSprite :: Field -> Position -> Sprite -> IO (Maybe SpriteContainer)
 placeRedSprite fld pos spr = placeSprite fld pos spr RedTeam
