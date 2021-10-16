@@ -36,13 +36,13 @@ createFieldMap (width, height) = list >>= return . Map.fromList
 
 
 greenStartingPositions :: Position -> [Position]
-greenStartingPositions fieldSize = [ (x, y) | x <- [1, 3 .. (fst fieldSize + 1)]
+greenStartingPositions fieldSize = [ (x, y) | x <- [1, 3 .. (fst fieldSize)]
                                             , y <- [1..(halfField)] ]
     where halfField = (snd fieldSize) `div` 2
 
 
 redStartingPositions :: Position -> [Position] 
-redStartingPositions fieldSize = [ (x, y) | x <- [1, 3 .. (fst fieldSize + 1)]
+redStartingPositions fieldSize = [ (x, y) | x <- reverse $ [1, 3 .. (fst fieldSize)]
                                           , y <- reverse $ [halfField..(snd fieldSize)] ]
     where halfField = (snd fieldSize) `div` 2
 

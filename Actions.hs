@@ -26,6 +26,11 @@ data Targets = Self
                             }
 
 
+data Target = Self
+            | Point
+            | SpriteSelection
+
+
 data MovementType = Line | Fly | Teleport
 
 

@@ -1,15 +1,17 @@
 module ActionApplications where
 
+import BattleState
 import Field
 import Sprite
 import Attributes
 import Actions
 
 
-applyAction :: SpriteContainer -> Action -> Field -> IO ()
-applyAction sprCon action fld =
+applyAction :: SpriteContainer -> Action -> BattleState -> IO ()
+applyAction sprCon action bstate =
     case actionType of
-      Attack -> applyAttack action sprCon fld
+      Attack -> applyAttack action sprCon bstate
+      Movement -> applyMovement action sprCon bstate
 
 
 applyAttack :: Action -> SpriteContainer -> SpriteContainer -> IO ()
