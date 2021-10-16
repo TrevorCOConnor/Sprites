@@ -7,21 +7,26 @@ import qualified Data.Map as M
 
 data Command = Cancel | Response String
 
-type CommandMap a = M.Map Char a
+type CommandMap a = M.Map String a
 
 
-cancelChars :: [Char]
-cancelChars = "\ESC"
+cancelChars :: [String]
+cancelChars = ["\ESC"]
 
 
-getInput :: IO Char
-getInput = do
+getInput :: IO String
+getInput = reverse <$> getInput' ""
+
+
+getInput' :: String -> IO String
+getInput' cs = do
     hSetEcho stdin False
-    hSetBuffering stdin NoBuffering
+    hSetBuffering stdin NoBuffering   
     char <- getChar
-    if char == '\ESC'
-       then getChar
-       else return $ toLower char
+    more <- hReady stdin
+    if more
+       then getInput' (char:cs)
+       else return $ char:cs
 
 
 getInputLine :: IO String
@@ -39,6 +44,7 @@ getCommand map = do
        then return (fromJust $ command)
        else getCommand map
 
+
 getCommandMaybe :: CommandMap a -> IO (Maybe a)
 getCommandMaybe map = do
     input <- getInput
@@ -50,8 +56,12 @@ getCommandMaybe map = do
 
 
 exampleMap :: CommandMap String
-exampleMap = M.fromList [ ('w', "Up")
-                        , ('a', "Left")
-                        , ('s', "Down")
-                        , ('d', "Right")
+exampleMap = M.fromList [ ("w", "Up")
+                        , ("a", "Left")
+                        , ("s", "Down")
+                        , ("d", "Right")
+                        , ("\ESC[D", "Left")
+                        , ("\ESC[C", "Right")
+                        , ("\ESC[A", "Up")
+                        , ("\ESC[B", "Down")
                         ]

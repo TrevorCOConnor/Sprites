@@ -29,12 +29,21 @@ sortOnInitiative :: [SpriteContainer] -> IO [SpriteContainer]
 sortOnInitiative sprCons = map fst <$> sortOn snd
                                    <$> zip sprCons
                                    <$> (sequence $ map getInitiative sprCons)
+
+
+nextFromFullRoster :: FullRoster -> Maybe Roster
+nextFromFullRoster (FullRoster _ []) = Nothing
+nextFromFullRoster (FullRoster _ (n:_)) = Just n
                                    
 
 cycleFullRoster :: FullRoster -> FullRoster
 cycleFullRoster (FullRoster passed []) = (FullRoster [] (passed))
-cycleFullRoster (FullRoster passed (n:[])) = (FullRoster [] (passed ++ n))
-cycleFullRoster (FullRoster passed (n:ns)) = (FullRoster (passed ++ n) ns)
+cycleFullRoster (FullRoster passed (n:ns)) = (FullRoster (passed ++ [n]) ns)
+
+
+cycleFullRosterWithFilter :: FullRoster -> (Roster -> Bool) -> FullRoster
+cycleFullRosterWithFilter (FullRoster passed togo) func = (FullRoster (passed ++ unfit) (rest))
+    where (unfit, rest) = break func togo 
 
 
 -- Create Functions
@@ -86,8 +95,11 @@ displaySelectedRoster = fmap (applyColor backgroundWhite) . displayRoster
 
 
 displayFullRoster :: FullRoster -> IO (String)
+displayFullRoster (FullRoster before []) = do
+    before' <- sequence $ map displayRoster before
+    return $ intercalate "\n" $ before'
 displayFullRoster (FullRoster before (selected:after)) = do
     before' <- sequence $ map displayRoster before
-    selected' <- displayRoster selected
+    selected' <- displaySelectedRoster selected
     after' <- sequence $ map displayRoster after
     return $ intercalate "\n" $ before' ++ [selected'] ++ after'

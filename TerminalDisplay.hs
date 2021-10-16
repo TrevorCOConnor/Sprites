@@ -125,13 +125,15 @@ displayField fld = do
     clearScreen
     cappedFieldDisplay fld >>= putStrLn
 
+
 -- BattleState
 mergeBuffer :: Int
 mergeBuffer = 3
 
 
-displayBattleState :: BattleState -> IO String
+displayBattleState :: BattleState -> IO ()
 displayBattleState (BattleState field fRoster) = do
+    clearScreen
     fieldString <- cappedFieldDisplay field
     rosterString <- displayFullRoster fRoster 
-    return $ mergeLines mergeBuffer fieldString rosterString
+    putStrLn $ mergeLines mergeBuffer fieldString rosterString
