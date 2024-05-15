@@ -59,8 +59,8 @@ createSpot view p
                             then fromJust fieldedge
                             else '*'
     | safeIsObscure field p = '*'
-    | safeIsEnd field p = 'E'
     | isJust wallspot = fromJust wallspot 
+    | safeIsEnd field p = 'E'
     | isJust $ sqrmark = fromJust sqrmark 
     | isJust $ safeGetSquare p field = ' '
     | otherwise = '*'

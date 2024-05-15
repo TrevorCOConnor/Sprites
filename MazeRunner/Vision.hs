@@ -34,7 +34,7 @@ lineOfSight field p1 p2 = if p1 == p2 || nextstep == p2
     where nextstep = nextStep field p1 p2
 
 losForgiveness :: Float
-losForgiveness = 0.1
+losForgiveness = 0.2
 
 nextStep :: Field -> Position -> Position -> Position
 nextStep field p1 p2

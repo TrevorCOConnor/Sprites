@@ -45,7 +45,7 @@ width = 100
 
 
 height :: Int
-height = 50
+height = 45
 
 
 startingField :: Field

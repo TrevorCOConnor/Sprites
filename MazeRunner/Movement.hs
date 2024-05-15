@@ -128,10 +128,8 @@ mapField func field = field { fieldRows = newRows }
 safeContainsObject :: Field -> Position -> Bool
 safeContainsObject = safeSquareCheck containsObject
 
-
 safeIsObscure :: Field -> Position -> Bool
 safeIsObscure = safeSquareCheck (not . sqrVisibility) 
-
 
 safeIsEnd :: Field -> Position -> Bool
 safeIsEnd = safeSquareCheck sqrEnd
